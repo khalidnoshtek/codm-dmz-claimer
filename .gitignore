@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Ignore everything in logs/ (runtime screenshots, summaries, debug frames)
+# but keep the directory in the repo so the daemon can write into it.
+logs/**
+!logs/.gitkeep
+
+.DS_Store

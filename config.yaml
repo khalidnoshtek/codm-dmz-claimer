@@ -1,0 +1,61 @@
+# LOCKED — the daemon is hard-coded to drive AVD `CODM_Pixel9` only. These
+# two fields are kept for backwards compatibility but are ignored at runtime:
+#   - target_avd MUST equal "CODM_Pixel9" or the daemon refuses to run.
+#   - adb_serial is ignored (warns and falls back to the locked AVD).
+# To genuinely point this project at a different AVD, edit lib/adb.py
+# LOCKED_AVD — a deliberate code change, not a config tweak.
+target_avd: "CODM_Pixel9"
+adb_serial: ""
+
+# CODM Android package id. Global = com.activision.callofduty.shooter
+# Garena (SEA) = com.garena.game.codm — change to match your install.
+package: "com.activision.callofduty.shooter"
+
+# Activity to launch. .MainActivity is the usual entry point; can be left null
+# to use `monkey -p <package>` which picks the default launcher activity.
+activity: null
+
+# Template-matching confidence threshold (0..1). Templates below this score
+# are treated as "not found". Lower = more permissive (more false matches).
+match_threshold: 0.82
+
+# Daemon loop period in seconds. 3h = 10800. Two of the rewards refresh every
+# 3-4h, the bigger one every 8h — running every 3h means each reward is claimed
+# within at most 1h of becoming available.
+loop_period_seconds: 10800
+
+# Random jitter added/subtracted from each loop interval (seconds). Helps avoid
+# a perfectly periodic signature and gives the cooldowns room to actually tick over.
+loop_jitter_seconds: 600
+
+# Per-tap settling delay after every input event (seconds).
+tap_settle_seconds: 1.2
+
+# Per-screen wait after navigating (seconds) — lets animations finish before
+# we try to match templates.
+screen_settle_seconds: 2.5
+
+# Maximum seconds to wait for a template to appear before giving up on a step.
+step_timeout_seconds: 20
+
+# If true, log "would tap (x,y)" instead of actually tapping. Useful while
+# tuning templates.
+dry_run: false
+
+# At end of each cycle, force-stop CODM AND shut down the AVD entirely.
+# Saves Mac RAM/CPU during the multi-hour wait between cycles. The next
+# cycle's start re-launches the AVD via ensure_avd_running, which waits
+# for boot + post-boot services, then cold-launches CODM with retries.
+# Cold-start cost is ~2 min, dwarfed by the 3-4h sleep, so this is a clear
+# win. Set to false if you'd rather keep the AVD warm (faster cycles,
+# more idle RAM use).
+shutdown_between_cycles: true
+
+# Schedule the Mac to wake itself just before the next cycle (via `pmset
+# schedule wake`). Lets the Mac sleep between cycles for real power savings
+# while still waking to claim. Requires a one-time sudoers rule that grants
+# passwordless sudo for `pmset schedule *` — see lib/wake.py for details.
+# Without the rule, this is a silent no-op and the Mac must stay awake.
+# Only fires when the inter-cycle sleep is > 10 minutes (no point sleeping
+# the Mac for a few minutes).
+sleep_mac_between_cycles: true

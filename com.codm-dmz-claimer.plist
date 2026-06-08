@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  launchd plist for keeping daemon.py alive across logins / reboots on macOS.
+
+  Install:
+    cp com.codm-dmz-claimer.plist ~/Library/LaunchAgents/
+    launchctl load -w ~/Library/LaunchAgents/com.codm-dmz-claimer.plist
+
+  Logs (in addition to logs/claimer.log) go to logs/launchd.{out,err}.log.
+
+  KeepAlive=true means launchd restarts daemon.py if it crashes. Combined
+  with the internal sleep loop, that's why we don't bother with cron.
+
+  EDIT the paths below to match where you placed the project, and the
+  PYTHONPATH if you use a venv.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.codm-dmz-claimer</string>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/khalid/Documents/Khalid/codm-dmz-claimer</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/khalid/Documents/Khalid/codm-dmz-claimer/.venv/bin/python</string>
+        <string>/Users/khalid/Documents/Khalid/codm-dmz-claimer/daemon.py</string>
+    </array>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/khalid/Documents/Khalid/codm-dmz-claimer/logs/launchd.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/khalid/Documents/Khalid/codm-dmz-claimer/logs/launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
