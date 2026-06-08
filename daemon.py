@@ -99,12 +99,17 @@ def loop_forever() -> int:
             pmset_wake = datetime.now() + timedelta(seconds=wait - 30)
             schedule_wake(pmset_wake)
 
-        # Sleep in small chunks so SIGTERM is responsive.
-        remaining = wait
-        while remaining > 0 and not _stopping:
-            chunk = min(5.0, remaining)
+        # Sleep in small chunks so SIGTERM is responsive. Use an absolute
+        # wall-clock deadline rather than a counter — Python's time.sleep()
+        # accumulates ~80ms of overhead per call, which over 1500+ iterations
+        # of 5s chunks drifts the daemon ~130s late on a multi-hour wait.
+        deadline = time.time() + wait
+        while not _stopping:
+            now = time.time()
+            if now >= deadline:
+                break
+            chunk = min(5.0, deadline - now)
             time.sleep(chunk)
-            remaining -= chunk
 
     # Cancel any pending wake so we don't leave a stale alarm queued.
     cancel_wakes()

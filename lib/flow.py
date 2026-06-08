@@ -164,22 +164,37 @@ def run_step(
     while time.time() < deadline:
         screen = device.screencap()
         if step.tap_all:
-            hits = find_all(screen, tpl_path, threshold=threshold)
-            if hits:
-                log.info("step %s: %d match(es) (scores=%s)", step.name, len(hits), [round(h.score, 3) for h in hits])
-                tapped = 0
+            # Loop scan-and-tap until no more matches appear. Handles two
+            # real-world cases that broke a single-pass approach:
+            #   a) A badge scoring just below the global threshold on the
+            #      first scan can match cleanly on a re-scan after the layout
+            #      settles from prior taps.
+            #   b) Cooldowns that expire DURING the cycle ("Remaining 00:00:01"
+            #      flips to "Tap to Claim" while we're tapping the others).
+            # Cap at MAX_ROUNDS to prevent runaway loops if dismissal goes weird.
+            MAX_ROUNDS = 5
+            total_tapped = 0
+            for round_idx in range(1, MAX_ROUNDS + 1):
+                if round_idx > 1:
+                    # Re-screencap so we see the post-tap layout
+                    screen = device.screencap()
+                hits = find_all(screen, tpl_path, threshold=threshold)
+                if not hits:
+                    if round_idx == 1:
+                        break  # no claimables this cycle — drop out of the outer search loop
+                    log.info("step %s: round %d found no more matches — done", step.name, round_idx)
+                    break
+                log.info("step %s: round %d found %d match(es) (scores=%s)",
+                         step.name, round_idx, len(hits), [round(h.score, 3) for h in hits])
                 for h in hits:
                     if dry_run:
                         log.info("  [dry-run] would tap (%d,%d)", h.x, h.y)
                     else:
                         device.tap(h.x, h.y)
-                    tapped += 1
-                    # If the tap triggers a transient popup (e.g. the LST Hunt
-                    # "you got X" modal that closes on any tap), wait for it to
-                    # show, then send a safe-spot tap to dismiss before moving
-                    # on to the next match. Without this, the next iteration's
-                    # tap would land on the popup overlay (dismissing it) instead
-                    # of claiming the next card, and we'd only ever claim ~half.
+                    total_tapped += 1
+                    # Transient popup dismiss (any tap closes it). Without
+                    # this, the next iteration's claim-tap would land on the
+                    # popup overlay (dismissing it) instead of the next card.
                     if step.dismiss_after_tap and not dry_run:
                         time.sleep(step.dismiss_pause_seconds)
                         dx, dy = step.dismiss_after_tap
@@ -187,7 +202,8 @@ def run_step(
                         device.tap(dx, dy)
                     time.sleep(tap_settle)
                 time.sleep(step.settle_after or settle_default)
-                return True, tapped
+            if total_tapped > 0:
+                return True, total_tapped
         else:
             hit = find_template(screen, tpl_path, threshold=threshold)
             if hit:
