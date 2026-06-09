@@ -21,10 +21,14 @@ import pytesseract
 
 log = logging.getLogger(__name__)
 
-# 'Remaining' label + HH:MM:SS or H:MM:SS (anchored on the label so we don't
-# mis-parse other HH:MM:SS-looking text elsewhere on screen, e.g. server
-# clocks or banner countdowns).
-TIME_RE = re.compile(r"Remain[a-z]*\s*(\d{1,2}):(\d{2}):(\d{2})", re.IGNORECASE)
+# HH:MM:SS — anywhere in the OCR'd text. We tried anchoring on the
+# "Remaining" prefix but tesseract sometimes eats the first letters of
+# "Remaining" when the diamond icon overlaps them (the top-right badge
+# is the worst offender). The middle separator is `\D?` because tesseract
+# also frequently eats the second colon ("03:42:55" -> "03:4255").
+# Sanity bounds in the parser (mm/ss < 60, hh <= 48) prevent false
+# matches on unrelated text like currency or version numbers.
+TIME_RE = re.compile(r"(\d{1,2}):(\d{2})\D?(\d{2})")
 
 
 def tesseract_available() -> bool:
@@ -43,9 +47,15 @@ def _crop_roi(screen_bgr: np.ndarray) -> np.ndarray:
     segmentation treats the very top as header noise. Cropping to the
     interior region (excluding the header bar at top, the tab sidebar at
     left, and the bottom UI) refocuses tesseract on just the badges.
+
+    y1 starts at 1.5% of height: the top-right wolf's badge sits very close
+    to the top of the screen (~y=50-80 on a 1440-tall frame), and clipping
+    even 30px off would partially eat the badge text — exactly why the
+    long-cooldown timer kept getting missed earlier.
+
     Coordinates are fractions so this survives screen-resolution changes."""
     H, W = screen_bgr.shape[:2]
-    y1, y2 = int(H * 0.04), int(H * 0.56)
+    y1, y2 = int(H * 0.015), int(H * 0.58)
     x1, x2 = int(W * 0.19), W
     return screen_bgr[y1:y2, x1:x2]
 
@@ -91,7 +101,12 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
     if not tesseract_available():
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
         return []
-    DEDUP_WINDOW = 25
+    # Proportional dedup: 25s absolute floor OR 5% of the value, whichever is
+    # larger. Short timers (18min vs 20min, 132s gap) stay distinct because
+    # 5% of 1080s = 54s. Long-timer OCR variants (03:42:55 misread as both
+    # 13375s and 13675s, 300s gap) collapse because 5% of 13000s = 650s > 300s.
+    def _is_dup(a: int, b: int) -> bool:
+        return abs(a - b) <= max(25, int(0.05 * min(a, b)))
     out: list[Cooldown] = []
     # Crop to the badge ROI first — tesseract is far more reliable when
     # not distracted by the header / sidebar / footer regions.
@@ -111,7 +126,7 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
                 if mm >= 60 or ss >= 60 or hh > 48:
                     continue
                 secs = hh * 3600 + mm * 60 + ss
-                if any(abs(c.seconds - secs) <= DEDUP_WINDOW for c in out):
+                if any(_is_dup(c.seconds, secs) for c in out):
                     continue
                 cd = Cooldown(raw_text=m.group(0), seconds=secs)
                 out.append(cd)
@@ -149,9 +164,11 @@ def read_cooldowns_with_retry(
         screen = device.screencap()
         cds = read_cooldowns(screen)
         # Merge with best-so-far (across attempts), preserving ±5s dedup
-        DEDUP_WINDOW = 25
+        # Same proportional dedup as read_cooldowns
+        def _is_dup(a: int, b: int) -> bool:
+            return abs(a - b) <= max(25, int(0.05 * min(a, b)))
         for cd in cds:
-            if not any(abs(b.seconds - cd.seconds) <= DEDUP_WINDOW for b in best):
+            if not any(_is_dup(b.seconds, cd.seconds) for b in best):
                 best.append(cd)
         log.info(
             "OCR attempt %d/%d: %d timer(s) this pass, %d total unique",
