@@ -133,7 +133,7 @@ DEFAULT_STEPS: list[Step] = [
         # screen center which lands on the popup's overlay and dismisses it.
         # On a 3120x1440 landscape AVD the center is (1560, 720).
         dismiss_after_tap=(1560, 720),
-        dismiss_pause_seconds=1.5,
+        dismiss_pause_seconds=0.5,
         notes="The purple 'Tap to Claim' badge. tap_all=True so we hit every ready reward; "
               "loose threshold (0.72 vs global 0.82) because the text is distinctive enough "
               "that false positives are unlikely, and we'd rather catch a borderline-rendered "
@@ -235,9 +235,16 @@ def run_step(
                         device.tap(h.x, h.y)
                     total_tapped += 1
                     if step.dismiss_after_tap and not dry_run:
+                        # Wait briefly for the popup to render, then send two
+                        # dismiss-taps a few hundred ms apart. The first tap
+                        # may fire before the popup is fully drawn (no-op);
+                        # the second catches it. This roughly halves the
+                        # visible popup time vs a single longer-paused tap.
                         time.sleep(step.dismiss_pause_seconds)
                         dx, dy = step.dismiss_after_tap
-                        log.info("  dismiss-tap (%d,%d)", dx, dy)
+                        log.info("  dismiss-tap (%d,%d) x2", dx, dy)
+                        device.tap(dx, dy)
+                        time.sleep(0.4)
                         device.tap(dx, dy)
                     time.sleep(tap_settle)
                 time.sleep(step.settle_after or settle_default)
