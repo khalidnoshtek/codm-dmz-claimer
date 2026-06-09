@@ -37,22 +37,35 @@ class Cooldown:
     seconds: int
 
 
-def _preprocess_for_ocr(screen_bgr: np.ndarray, upscale: float = 3.0) -> np.ndarray:
-    """Convert the screen to a black-on-white binary image suitable for
-    tesseract. The badges are light text on a dark background; we invert
-    so tesseract sees its preferred dark-text-on-light. Larger upscale
-    helps tesseract distinguish 6 vs 8 vs 0 — the most common misreads
-    on the LST Hunt badges where wolf body lighting reduces digit
-    contrast.
-    """
+def _crop_roi(screen_bgr: np.ndarray) -> np.ndarray:
+    """Crop the screen to just the wolf/badge area.
+    Whole-screen OCR sometimes drops the top badge because tesseract's page
+    segmentation treats the very top as header noise. Cropping to the
+    interior region (excluding the header bar at top, the tab sidebar at
+    left, and the bottom UI) refocuses tesseract on just the badges.
+    Coordinates are fractions so this survives screen-resolution changes."""
+    H, W = screen_bgr.shape[:2]
+    y1, y2 = int(H * 0.04), int(H * 0.56)
+    x1, x2 = int(W * 0.19), W
+    return screen_bgr[y1:y2, x1:x2]
+
+
+def _preprocess_variant(screen_bgr: np.ndarray, upscale: float, method: str) -> np.ndarray:
+    """Multiple preprocessing variants — tesseract can miss timers on one
+    binarization but catch them on another, especially when the badge sits
+    over a brightly-lit wolf body where global Otsu fails locally."""
     gray = cv2.cvtColor(screen_bgr, cv2.COLOR_BGR2GRAY)
     gray = cv2.resize(gray, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
-    # Boost local contrast before thresholding — CLAHE is far better than
-    # global Otsu when text sits over varying-brightness backgrounds (like
-    # the wolves whose bodies have bright highlights through them).
-    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    gray = clahe.apply(gray)
-    _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    if method == "clahe_otsu":
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        gray = clahe.apply(gray)
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    elif method == "adaptive":
+        binary = cv2.adaptiveThreshold(
+            gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 21, 8
+        )
+    else:  # raw_otsu
+        _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     if binary.mean() < 127:
         binary = cv2.bitwise_not(binary)
     return binary
@@ -65,46 +78,60 @@ def _ocr_text(image: np.ndarray, psm: int) -> str:
     )
 
 
-def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
-    """OCR the whole screen at a high upscale, run tesseract under MULTIPLE
-    PSM modes (sparse text + single block), regex-extract every
-    `Remaining HH:MM:SS`, dedupe by HH:MM:SS value (single best read of
-    each timer survives). Returns a list of Cooldown in seconds.
+# LST Hunt always has 3 cards. If OCR finds fewer than this, we log a
+# warning — the daemon still works (min() drives the schedule) but it's
+# a signal the preprocessing or PSM config might need tuning.
+EXPECTED_TIMER_COUNT = 3
 
-    Why multiple PSMs: PSM 11 (sparse text) catches scattered badges but
-    occasionally drops one. PSM 6 (single uniform block) catches it but
-    sometimes mangles the layout. Running both and merging gets the best
-    of both — same timer appearing in both passes is fine (we dedupe).
+
+def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
+    """OCR the screen across multiple preprocessing variants × PSM modes,
+    regex-extract every `Remaining HH:MM:SS`, dedupe with a ±5s tolerance.
+
+    Why so many passes: a single binarization + PSM rarely catches all 3
+    LST Hunt timers — the badges sit over wolves whose bodies vary in
+    brightness, so a global Otsu threshold that works for the top-right
+    badge might wash out the bottom-right badge. Running multiple
+    preprocessings (Otsu, adaptive, CLAHE+Otsu) × multiple page-segmentation
+    modes maximizes the chance of catching every badge.
     """
     if not tesseract_available():
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
         return []
-    binary = _preprocess_for_ocr(screen_bgr, upscale=3.0)
-    # Dedup with a ±5s tolerance — running multiple PSM passes occasionally
-    # re-reads the same card at a moment where the seconds digit ticked, so
-    # exact-second dedup overcounts. The clock granularity in the game is 1s
-    # and OCR overhead between passes is ~0.5-1s, so 5s is a safe window.
     DEDUP_WINDOW = 5
     out: list[Cooldown] = []
-    for psm in (11, 6, 7):
-        try:
-            raw = _ocr_text(binary, psm)
-        except Exception as e:
-            log.warning("tesseract PSM %d failed: %s", psm, e)
-            continue
-        for m in TIME_RE.finditer(raw):
-            hh, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
-            # Sanity: minutes/seconds out of range -> probably an OCR error
-            if mm >= 60 or ss >= 60 or hh > 48:
-                log.debug("skipping nonsensical timer from PSM %d: %r", psm, m.group(0))
+    # Crop to the badge ROI first — tesseract is far more reliable when
+    # not distracted by the header / sidebar / footer regions.
+    roi = _crop_roi(screen_bgr)
+    # 3 preprocessing variants × 3 PSM modes = up to 9 passes on the ROI.
+    # Tesseract is fast enough at this size and we run OCR once per cycle.
+    for prep_method in ("clahe_otsu", "adaptive", "raw_otsu"):
+        binary = _preprocess_variant(roi, upscale=4.0, method=prep_method)
+        for psm in (11, 6, 3):
+            try:
+                raw = _ocr_text(binary, psm)
+            except Exception as e:
+                log.debug("tesseract %s/PSM %d failed: %s", prep_method, psm, e)
                 continue
-            secs = hh * 3600 + mm * 60 + ss
-            if any(abs(c.seconds - secs) <= DEDUP_WINDOW for c in out):
-                continue
-            cd = Cooldown(raw_text=m.group(0), seconds=secs)
-            out.append(cd)
-            log.info("read cooldown (PSM %d): %r -> %ds (~%.1fh)", psm, m.group(0), secs, secs / 3600)
-    log.info("OCR found %d unique cooldown timer(s)", len(out))
+            for m in TIME_RE.finditer(raw):
+                hh, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
+                if mm >= 60 or ss >= 60 or hh > 48:
+                    continue
+                secs = hh * 3600 + mm * 60 + ss
+                if any(abs(c.seconds - secs) <= DEDUP_WINDOW for c in out):
+                    continue
+                cd = Cooldown(raw_text=m.group(0), seconds=secs)
+                out.append(cd)
+                log.info("read cooldown (%s/PSM %d): %r -> %ds (~%.1fh)",
+                         prep_method, psm, m.group(0), secs, secs / 3600)
+    if len(out) < EXPECTED_TIMER_COUNT:
+        log.warning(
+            "OCR found only %d cooldown timer(s), expected %d — daemon will still use "
+            "min() for scheduling but one timer was missed",
+            len(out), EXPECTED_TIMER_COUNT,
+        )
+    else:
+        log.info("OCR found %d unique cooldown timer(s)", len(out))
     return out
 
 
