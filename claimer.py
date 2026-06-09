@@ -38,6 +38,17 @@ def setup_logging(level: int = logging.INFO) -> None:
     root.handlers[:] = [handler_console, handler_file]
 
 
+# Dedicated user-friendly log: one line per cycle, plain English, no debug
+# spam. Separate file so the verbose log stays available for debugging but
+# isn't what the user has to read day-to-day.
+def log_status(message: str) -> None:
+    LOGS.mkdir(exist_ok=True)
+    stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    line = f"{stamp}  {message}\n"
+    with (LOGS / "status.log").open("a") as f:
+        f.write(line)
+
+
 def load_config() -> dict:
     cfg_path = ROOT / "config.yaml"
     with cfg_path.open() as f:
@@ -242,6 +253,20 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     }
     (LOGS / f"{stamp}_summary.json").write_text(json.dumps(summary, indent=2))
     log.info("Summary: %s", summary)
+
+    # One-line human-readable summary for the user-facing status log.
+    if not summary.get("ok"):
+        msg = f"FAILED at {summary.get('aborted_at') or 'unknown'} — {summary.get('abort_reason') or ''}"
+    else:
+        claimed = summary.get("claims_attempted") or 0
+        cds = summary.get("cooldowns_seconds") or []
+        cd_str = ", ".join(f"{s/3600:.1f}h" for s in sorted(cds)) if cds else "(none read)"
+        if claimed:
+            msg = f"CLAIMED {claimed} reward(s) | cooldowns: {cd_str}"
+        else:
+            msg = f"nothing claimable | cooldowns: {cd_str}"
+    log_status(msg)
+
     return summary
 
 
