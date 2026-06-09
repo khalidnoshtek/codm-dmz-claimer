@@ -189,26 +189,38 @@ def run_step(
     while time.time() < deadline:
         screen = device.screencap()
         if step.tap_all:
-            # Loop scan-and-tap until no more matches appear. Handles two
-            # real-world cases that broke a single-pass approach:
-            #   a) A badge scoring just below the global threshold on the
-            #      first scan can match cleanly on a re-scan after the layout
-            #      settles from prior taps.
-            #   b) Cooldowns that expire DURING the cycle ("Remaining 00:00:01"
-            #      flips to "Tap to Claim" while we're tapping the others).
-            # Cap at MAX_ROUNDS to prevent runaway loops if dismissal goes weird.
-            MAX_ROUNDS = 5
+            # Loop scan-and-tap until N consecutive empty rounds. Handles:
+            #   a) Threshold-bordered badges that match on a re-scan.
+            #   b) Cooldowns expiring DURING the cycle (timer at 00:00:01
+            #      flips to "Tap to Claim" while we're tapping others).
+            # PATIENCE_ROUNDS controls how persistent we are about case (b):
+            # after we tap something, we keep checking with delays even if
+            # the immediate next round is empty — a timer might expire a
+            # few seconds later. Without this, today's bug recurs: daemon
+            # taps 1 of 3, round 2 empty 4s later -> done, but card B's
+            # timer expired 10s later and user has to claim manually.
+            MAX_ROUNDS = 8
+            PATIENCE_ROUNDS = 3       # how many consecutive empty rounds before we give up
+            PATIENCE_DELAY = 6.0      # seconds between empty rounds (long enough for a timer to tick over)
             total_tapped = 0
+            empty_streak = 0
             for round_idx in range(1, MAX_ROUNDS + 1):
                 if round_idx > 1:
-                    # Re-screencap so we see the post-tap layout
                     screen = device.screencap()
                 hits = find_all(screen, tpl_path, threshold=threshold)
                 if not hits:
-                    if round_idx == 1:
-                        break  # no claimables this cycle — drop out of the outer search loop
-                    log.info("step %s: round %d found no more matches — done", step.name, round_idx)
-                    break
+                    if round_idx == 1 and total_tapped == 0:
+                        # Nothing to claim from the start — drop out fast
+                        break
+                    empty_streak += 1
+                    log.info("step %s: round %d found no matches (empty_streak=%d/%d)",
+                             step.name, round_idx, empty_streak, PATIENCE_ROUNDS)
+                    if empty_streak >= PATIENCE_ROUNDS:
+                        log.info("step %s: %d consecutive empty rounds — done", step.name, PATIENCE_ROUNDS)
+                        break
+                    time.sleep(PATIENCE_DELAY)
+                    continue
+                empty_streak = 0  # reset patience counter when we find something
                 log.info("step %s: round %d found %d match(es) (scores=%s)",
                          step.name, round_idx, len(hits), [round(h.score, 3) for h in hits])
                 for h in hits:
@@ -217,9 +229,6 @@ def run_step(
                     else:
                         device.tap(h.x, h.y)
                     total_tapped += 1
-                    # Transient popup dismiss (any tap closes it). Without
-                    # this, the next iteration's claim-tap would land on the
-                    # popup overlay (dismissing it) instead of the next card.
                     if step.dismiss_after_tap and not dry_run:
                         time.sleep(step.dismiss_pause_seconds)
                         dx, dy = step.dismiss_after_tap
