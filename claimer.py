@@ -20,7 +20,7 @@ import yaml
 
 from lib.adb import AdbDevice, ensure_avd_running, LOCKED_AVD
 from lib.flow import DEFAULT_STEPS, run_flow
-from lib.ocr import read_cooldowns, read_cooldowns_with_retry
+from lib.ocr import read_cooldowns_with_retry
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "templates"
@@ -122,6 +122,49 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         tap_settle=float(cfg.get("tap_settle_seconds", 1.2)),
         dry_run=dry_run,
     )
+
+    # Recovery: if the flow aborted, check whether we even have CODM in
+    # foreground. The most common abort cause is CODM crashing to Android
+    # home (network error dialog dismissed by user, ANR, asset-check error,
+    # etc.). In that case relaunch CODM cold and retry the flow once.
+    if not result.ok() and not dry_run:
+        log.warning("Flow aborted at %s — attempting recovery", result.aborted_at)
+        codm_alive = device.is_app_foreground(pkg)
+        if not codm_alive:
+            log.info("Recovery: CODM not foregrounded (probably crashed). Relaunching cold.")
+            # Best-effort force_stop first to clean residual state, then relaunch
+            try:
+                device.force_stop(pkg)
+            except Exception:
+                pass
+            time.sleep(2.0)
+            device.launch_app(pkg, activity)
+            if device.wait_app_foreground(pkg, timeout=60.0):
+                time.sleep(float(cfg.get("cold_launch_settle_seconds", 25)))
+            else:
+                log.error("Recovery: CODM didn't come back after relaunch")
+        else:
+            # CODM is foregrounded but on an unknown screen. Try sending a few
+            # BACK keys to dismiss any modal dialog, then retry the flow.
+            log.info("Recovery: CODM foregrounded but on unknown screen. Pressing BACK 3x.")
+            for _ in range(3):
+                device.back()
+                time.sleep(1.0)
+        log.info("Recovery: retrying navigation flow once")
+        result = run_flow(
+            device,
+            nav_steps,
+            TEMPLATES,
+            threshold=float(cfg.get("match_threshold", 0.82)),
+            step_timeout=float(cfg.get("step_timeout_seconds", 20)),
+            screen_settle=float(cfg.get("screen_settle_seconds", 2.5)),
+            tap_settle=float(cfg.get("tap_settle_seconds", 1.2)),
+            dry_run=dry_run,
+        )
+        if result.ok():
+            log.info("Recovery: SUCCESS — flow completed on retry")
+        else:
+            log.warning("Recovery: retry also aborted at %s — giving up this cycle", result.aborted_at)
 
     # Final screenshot + cooldown OCR — captured while still on the LST Hunt
     # page. Uses retry-with-fresh-screencaps because the post-claim animation
