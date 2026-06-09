@@ -60,11 +60,13 @@ DEFAULT_STEPS: list[Step] = [
         template="10_popup_close_x.png",
         tap_all=True,
         on_missing="skip",
+        timeout_override=5.0,
         notes="CODM throws promo popups ('DON'T MISS OUT', battle pass, event banners) "
               "after launch — they cover the main lobby and have a small X close button "
-              "in the top-right of each popup. tap_all + the loop-until-dry logic in "
-              "run_step will tap every X visible, then re-scan, until no more are showing. "
-              "Skip-on-missing so the flow doesn't break when no popups appear (most days).",
+              "in the top-right of each popup. tap_all + loop-until-dry will tap every X "
+              "visible, then re-scan, until no more are showing. Short timeout because "
+              "popups are visible immediately at launch; no point waiting 20s on cycles "
+              "with no popups (which is most days).",
     ),
     Step(
         name="tap_home_icon",
@@ -82,10 +84,12 @@ DEFAULT_STEPS: list[Step] = [
         name="enter_dmz_mode",
         template="00_dmz_recon_mode.png",
         on_missing="skip",
+        timeout_override=5.0,
         notes="From the CODM main lobby, tap DMZ: RECON to switch into DMZ mode. "
-              "Skip-on-missing because if we landed directly in the DMZ lobby (warm "
-              "relaunch), this template won't match — the next step verifies we're on "
-              "the right screen either way.",
+              "Skip-on-missing because in scenario 2 (warm relaunch landed directly in "
+              "DMZ lobby) this template won't match. Short timeout for the same reason — "
+              "if DMZ:RECON isn't on screen within 5s of arriving here, we're not on the "
+              "main lobby and the next step (dmz_lobby_check) will validate.",
     ),
     Step(
         name="dmz_lobby_check",
