@@ -73,22 +73,36 @@ def loop_forever() -> int:
         # *fallback* used when OCR couldn't read any timers (e.g. all claimed,
         # nav failed, or popup blocking the cards).
         ocr_seconds = None
+        ocr_count = 0
         try:
-            ocr_seconds = summary.get("min_cooldown_seconds") if isinstance(summary, dict) else None
+            if isinstance(summary, dict):
+                ocr_seconds = summary.get("min_cooldown_seconds")
+                ocr_count = len(summary.get("cooldowns_seconds") or [])
         except NameError:
             pass
         buffer = 120  # 2-minute safety so we don't arrive a few seconds early
         if ocr_seconds and ocr_seconds > 60:
             base = ocr_seconds + buffer
-            source = f"OCR (min cooldown {ocr_seconds}s)"
+            source = f"OCR (min cooldown {ocr_seconds}s, found {ocr_count}/3)"
         else:
             base = period
             source = "config period"
-        # Hard ceiling: never sleep more than max_sleep_seconds. Even if OCR
-        # caught only an 8h-cooldown timer (missing a shorter one), we still
-        # wake to re-check. Trades extra cycles for guaranteed no-missed-claims.
-        max_sleep = float(cfg.get("max_sleep_seconds", 7200))  # 2h default
-        if base > max_sleep:
+        # Two-tier cap based on OCR confidence:
+        #   - Found all 3 timers -> trust the schedule, cap at max_sleep_seconds
+        #   - Found fewer than 3 -> can't trust min(), use the tighter
+        #     low_confidence_sleep_seconds so we re-check soon. This handles
+        #     the case where OCR missed a short cooldown entirely and the
+        #     read-out min was actually from a much-longer-cooldown card.
+        max_sleep = float(cfg.get("max_sleep_seconds", 7200))            # 2h default
+        low_conf_sleep = float(cfg.get("low_confidence_sleep_seconds", 1200))  # 20m default
+        if ocr_count < 3 and ocr_seconds:
+            tighter = low_conf_sleep
+            if base > tighter:
+                log.info("Low-confidence OCR (%d/3 timers): capping sleep at %.0fs instead of %.0fs",
+                         ocr_count, tighter, max_sleep)
+                base = tighter
+                source = f"{source} -> low-confidence cap"
+        elif base > max_sleep:
             log.info("Capping sleep: OCR said %ds but max_sleep_seconds=%.0f", int(base), max_sleep)
             base = max_sleep
             source = f"{source} -> capped at max_sleep_seconds"
