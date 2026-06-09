@@ -91,7 +91,7 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
     if not tesseract_available():
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
         return []
-    DEDUP_WINDOW = 5
+    DEDUP_WINDOW = 25
     out: list[Cooldown] = []
     # Crop to the badge ROI first — tesseract is far more reliable when
     # not distracted by the header / sidebar / footer regions.
@@ -149,7 +149,7 @@ def read_cooldowns_with_retry(
         screen = device.screencap()
         cds = read_cooldowns(screen)
         # Merge with best-so-far (across attempts), preserving ±5s dedup
-        DEDUP_WINDOW = 5
+        DEDUP_WINDOW = 25
         for cd in cds:
             if not any(abs(b.seconds - cd.seconds) <= DEDUP_WINDOW for b in best):
                 best.append(cd)

@@ -35,6 +35,7 @@ class Step:
     tap: bool = True                    # tap the match (False = verify-only / "we're on the right screen")
     settle_after: float | None = None   # override the default per-step settle delay
     timeout_override: float | None = None  # per-step timeout, overrides config.step_timeout_seconds
+    threshold_override: float | None = None  # per-step template-match threshold; loosen for distinctive text-only templates
     optional: bool = False              # alias for on_missing="skip", reads nicer in the list
     pre_swipe: tuple[int, int, int, int, int] | None = None  # (x1,y1,x2,y2,duration_ms) before the search
     # After each tap, send an additional "anywhere" tap to dismiss a transient popup
@@ -126,17 +127,18 @@ DEFAULT_STEPS: list[Step] = [
         template="05_tap_to_claim.png",
         tap_all=True,
         on_missing="skip",
+        threshold_override=0.72,
         # The 'you got X' popup that appears after each claim closes on any
         # tap — so we don't template-match an OK button, we just tap the
         # screen center which lands on the popup's overlay and dismisses it.
         # On a 3120x1440 landscape AVD the center is (1560, 720).
         dismiss_after_tap=(1560, 720),
         dismiss_pause_seconds=1.5,
-        notes="The purple 'Tap to Claim' badge with the right-arrow. tap_all=True so we hit every "
-              "ready reward in one pass. After each tap, dismiss_after_tap fires a center-screen "
-              "tap to clear the 'you got X' popup so the next claim's tap actually lands on the "
-              "next card instead of dismissing the popup. Cards on cooldown show 'Remaining "
-              "HH:MM:SS' instead and won't match this template.",
+        notes="The purple 'Tap to Claim' badge. tap_all=True so we hit every ready reward; "
+              "loose threshold (0.72 vs global 0.82) because the text is distinctive enough "
+              "that false positives are unlikely, and we'd rather catch a borderline-rendered "
+              "badge than miss a claim. After each tap, dismiss_after_tap clears the 'you got X' "
+              "popup so the next claim's tap lands on the next card.",
     ),
     Step(
         name="back_to_lobby",
@@ -185,6 +187,9 @@ def run_step(
     # Per-step timeout override — useful for fast skip-eligible checks like
     # tap_home_icon which doesn't need the full 20s budget.
     effective_timeout = step.timeout_override if step.timeout_override is not None else step_timeout
+    # Per-step threshold override — for distinctive text-only templates
+    # (e.g. tap_to_claim) we can afford a looser match.
+    effective_threshold = step.threshold_override if step.threshold_override is not None else threshold
     deadline = time.time() + effective_timeout
     while time.time() < deadline:
         screen = device.screencap()
@@ -207,7 +212,7 @@ def run_step(
             for round_idx in range(1, MAX_ROUNDS + 1):
                 if round_idx > 1:
                     screen = device.screencap()
-                hits = find_all(screen, tpl_path, threshold=threshold)
+                hits = find_all(screen, tpl_path, threshold=effective_threshold)
                 if not hits:
                     if round_idx == 1 and total_tapped == 0:
                         # Nothing to claim from the start — drop out fast
@@ -239,7 +244,7 @@ def run_step(
             if total_tapped > 0:
                 return True, total_tapped
         else:
-            hit = find_template(screen, tpl_path, threshold=threshold)
+            hit = find_template(screen, tpl_path, threshold=effective_threshold)
             if hit:
                 log.info("step %s: matched at (%d,%d) score=%.3f", step.name, hit.x, hit.y, hit.score)
                 if not step.tap:
