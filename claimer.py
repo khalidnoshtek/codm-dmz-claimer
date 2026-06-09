@@ -152,22 +152,18 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             dry_run=dry_run,
         )
 
-    # Cleanup — controlled by `shutdown_between_cycles` in config.yaml:
-    #   true  (default): force-stop CODM + kill the AVD. Saves all the Mac
-    #         resources during the multi-hour wait. Next cycle's cold launch
-    #         is handled by ensure_avd_running + the cold-launch retry loop.
-    #   false: leave CODM and the AVD running, just walk back to the main
-    #         lobby with BACK keys. Cheaper per-cycle but the AVD eats RAM
-    #         continuously.
+    # Cleanup — controlled by `shutdown_between_cycles` in config.yaml.
+    # Graceful path: send HOME key (CODM gets the normal Android lifecycle
+    # signals: onPause -> onStop, saves state), wait briefly, then emu kill
+    # the AVD. NO force_stop — that triggers CODM's repair sequence on next
+    # cold launch (30-90s wasted per cycle).
     shutdown_between = bool(cfg.get("shutdown_between_cycles", True))
     if dry_run:
         log.info("Cleanup: skipped (dry-run)")
     elif shutdown_between:
-        log.info("Cleanup: force-stopping CODM and shutting down AVD (resource-saving)")
-        try:
-            device.force_stop(pkg)
-        except Exception as e:
-            log.warning("force_stop failed: %s", e)
+        log.info("Cleanup: HOME key (CODM saves state) then AVD shutdown")
+        device.home()
+        time.sleep(2.5)  # give CODM time to run onPause/onStop and flush state
         try:
             subprocess.run(
                 ["adb", "-s", device.serial, "emu", "kill"],
