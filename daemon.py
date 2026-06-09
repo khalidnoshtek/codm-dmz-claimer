@@ -74,16 +74,34 @@ def loop_forever() -> int:
         # nav failed, or popup blocking the cards).
         ocr_seconds = None
         ocr_count = 0
+        all_cooldowns: list[int] = []
         try:
             if isinstance(summary, dict):
                 ocr_seconds = summary.get("min_cooldown_seconds")
-                ocr_count = len(summary.get("cooldowns_seconds") or [])
+                all_cooldowns = sorted(summary.get("cooldowns_seconds") or [])
+                ocr_count = len(all_cooldowns)
         except NameError:
             pass
         buffer = 120  # 2-minute safety so we don't arrive a few seconds early
-        if ocr_seconds and ocr_seconds > 60:
-            base = ocr_seconds + buffer
-            source = f"OCR (min cooldown {ocr_seconds}s, found {ocr_count}/3)"
+        if all_cooldowns:
+            # Cluster nearby cooldowns: starting from the soonest, include any
+            # subsequent cooldown within BURST_WINDOW seconds of the running
+            # max. Wake at the MAX of the cluster, so all cards in the burst
+            # are claimable in one cycle.
+            BURST_WINDOW = float(cfg.get("burst_window_seconds", 600))  # 10min default
+            cluster_max = all_cooldowns[0]
+            for cd in all_cooldowns[1:]:
+                if cd - cluster_max <= BURST_WINDOW:
+                    cluster_max = cd
+                else:
+                    break
+            base = cluster_max + buffer
+            if cluster_max == all_cooldowns[0]:
+                source = f"OCR (min cooldown {ocr_seconds}s, found {ocr_count}/3)"
+            else:
+                in_cluster = [c for c in all_cooldowns if c <= cluster_max]
+                source = (f"OCR (burst cluster of {len(in_cluster)} cooldowns, "
+                          f"min={all_cooldowns[0]}s max={cluster_max}s, found {ocr_count}/3)")
         else:
             base = period
             source = "config period"
