@@ -80,7 +80,12 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
         return []
     binary = _preprocess_for_ocr(screen_bgr, upscale=3.0)
-    seen: dict[tuple[int, int, int], Cooldown] = {}
+    # Dedup with a ±5s tolerance — running multiple PSM passes occasionally
+    # re-reads the same card at a moment where the seconds digit ticked, so
+    # exact-second dedup overcounts. The clock granularity in the game is 1s
+    # and OCR overhead between passes is ~0.5-1s, so 5s is a safe window.
+    DEDUP_WINDOW = 5
+    out: list[Cooldown] = []
     for psm in (11, 6, 7):
         try:
             raw = _ocr_text(binary, psm)
@@ -93,14 +98,12 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
             if mm >= 60 or ss >= 60 or hh > 48:
                 log.debug("skipping nonsensical timer from PSM %d: %r", psm, m.group(0))
                 continue
-            key = (hh, mm, ss)
-            if key in seen:
-                continue
             secs = hh * 3600 + mm * 60 + ss
+            if any(abs(c.seconds - secs) <= DEDUP_WINDOW for c in out):
+                continue
             cd = Cooldown(raw_text=m.group(0), seconds=secs)
-            seen[key] = cd
+            out.append(cd)
             log.info("read cooldown (PSM %d): %r -> %ds (~%.1fh)", psm, m.group(0), secs, secs / 3600)
-    out = list(seen.values())
     log.info("OCR found %d unique cooldown timer(s)", len(out))
     return out
 
