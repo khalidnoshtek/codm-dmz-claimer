@@ -61,24 +61,20 @@ DEFAULT_STEPS: list[Step] = [
         tap_all=True,
         on_missing="skip",
         timeout_override=5.0,
+        settle_after=1.0,
         notes="CODM throws promo popups ('DON'T MISS OUT', battle pass, event banners) "
-              "after launch — they cover the main lobby and have a small X close button "
-              "in the top-right of each popup. tap_all + loop-until-dry will tap every X "
-              "visible, then re-scan, until no more are showing. Short timeout because "
-              "popups are visible immediately at launch; no point waiting 20s on cycles "
-              "with no popups (which is most days).",
+              "after launch. tap_all + loop-until-dry will tap every X, re-scan, until "
+              "no more are showing. settle_after=1.0 shaves time off each round (default "
+              "2.5s was conservative); the next popup renders in well under a second.",
     ),
     Step(
         name="tap_home_icon",
         template="08_home_icon.png",
         on_missing="skip",
-        timeout_override=3.0,
-        notes="The small HOUSE icon visible top-left on every CODM in-mode screen "
-              "(MULTIPLAYER, DMZ, BR, etc.). Tapping it returns to the main CODM lobby — "
-              "essential because CODM remembers the last mode and may cold-launch into "
-              "MULTIPLAYER (or whatever the user was last playing) instead of the main "
-              "lobby. Short timeout because after dismiss_popups we're already at the "
-              "main lobby — the home icon doesn't exist there, no point waiting 20s.",
+        timeout_override=1.5,
+        notes="The small HOUSE icon visible top-left on CODM mode screens (MULTIPLAYER, "
+              "BR, etc.). Tapping returns to the main lobby. Skip-fast (1.5s) for the "
+              "common case where we just dismissed popups and are already on main lobby.",
     ),
     Step(
         name="enter_dmz_mode",

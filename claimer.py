@@ -73,7 +73,10 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     cold_launch = not device.is_app_foreground(pkg)
     if cold_launch:
         max_attempts = int(cfg.get("cold_launch_max_attempts", 3))
-        cold_settle = float(cfg.get("cold_launch_settle_seconds", 60))
+        # CODM is typically ready ~15s after foreground on this AVD; 25s gives
+        # 10s of buffer for shader compilation variance without dragging the
+        # cycle out by 45s of unnecessary polling.
+        cold_settle = float(cfg.get("cold_launch_settle_seconds", 25))
         succeeded = False
         for attempt in range(1, max_attempts + 1):
             log.info("Launching %s (cold, attempt %d/%d) ...", pkg, attempt, max_attempts)
