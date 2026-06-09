@@ -36,6 +36,7 @@ class Step:
     settle_after: float | None = None   # override the default per-step settle delay
     timeout_override: float | None = None  # per-step timeout, overrides config.step_timeout_seconds
     threshold_override: float | None = None  # per-step template-match threshold; loosen for distinctive text-only templates
+    max_taps: int | None = None         # cap total taps across all loop-until-dry rounds (tap_all only)
     optional: bool = False              # alias for on_missing="skip", reads nicer in the list
     pre_swipe: tuple[int, int, int, int, int] | None = None  # (x1,y1,x2,y2,duration_ms) before the search
     # After each tap, send an additional "anywhere" tap to dismiss a transient popup
@@ -128,6 +129,7 @@ DEFAULT_STEPS: list[Step] = [
         tap_all=True,
         on_missing="skip",
         threshold_override=0.72,
+        max_taps=3,  # LST Hunt has exactly 3 cards — cap so a loose threshold can't over-tap
         # The 'you got X' popup that appears after each claim closes on any
         # tap — so we don't template-match an OK button, we just tap the
         # screen center which lands on the popup's overlay and dismisses it.
@@ -228,7 +230,13 @@ def run_step(
                 empty_streak = 0  # reset patience counter when we find something
                 log.info("step %s: round %d found %d match(es) (scores=%s)",
                          step.name, round_idx, len(hits), [round(h.score, 3) for h in hits])
+                cap_hit = False
                 for h in hits:
+                    if step.max_taps is not None and total_tapped >= step.max_taps:
+                        log.info("step %s: max_taps=%d reached — stopping (loose threshold "
+                                 "may be hitting false positives)", step.name, step.max_taps)
+                        cap_hit = True
+                        break
                     if dry_run:
                         log.info("  [dry-run] would tap (%d,%d)", h.x, h.y)
                     else:
@@ -248,6 +256,8 @@ def run_step(
                         device.tap(dx, dy)
                     time.sleep(tap_settle)
                 time.sleep(step.settle_after or settle_default)
+                if cap_hit:
+                    break
             if total_tapped > 0:
                 return True, total_tapped
         else:
