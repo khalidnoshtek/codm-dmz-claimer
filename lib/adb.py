@@ -44,7 +44,7 @@ def _emulator_binary() -> Path:
 def ensure_avd_running(
     avd_name: str,
     boot_timeout: float = 240.0,
-    post_boot_settle_seconds: float = 35.0,
+    post_boot_settle_seconds: float = 10.0,
 ) -> str:
     """If the locked AVD is already attached via ADB, return its serial.
     Otherwise launch it via the Android emulator binary, wait for it to come
