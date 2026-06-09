@@ -59,3 +59,16 @@ shutdown_between_cycles: true
 # Only fires when the inter-cycle sleep is > 10 minutes (no point sleeping
 # the Mac for a few minutes).
 sleep_mac_between_cycles: true
+
+# Hard ceiling on the daemon's between-cycle sleep. Caps OCR-driven scheduling
+# at this value — if OCR catches only an 8h-cooldown timer (missing a shorter
+# one), the daemon still wakes within this window to re-check. Guarantees no
+# claim sits longer than max_sleep_seconds + ~10min after becoming available.
+# Default 7200s (2h) trades extra cycles for guaranteed coverage.
+max_sleep_seconds: 7200
+
+# OCR retry: if read_cooldowns finds fewer than the expected 3 timers, take
+# additional screenshots with delays between them. Handles transient post-
+# claim animations that briefly hide a badge.
+ocr_max_attempts: 3
+ocr_inter_attempt_seconds: 4.0

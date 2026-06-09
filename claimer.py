@@ -20,7 +20,7 @@ import yaml
 
 from lib.adb import AdbDevice, ensure_avd_running, LOCKED_AVD
 from lib.flow import DEFAULT_STEPS, run_flow
-from lib.ocr import read_cooldowns
+from lib.ocr import read_cooldowns, read_cooldowns_with_retry
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "templates"
@@ -124,16 +124,23 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     )
 
     # Final screenshot + cooldown OCR — captured while still on the LST Hunt
-    # page (the only screen with "Remaining HH:MM:SS" badges visible). The
-    # min_cooldown drives the daemon's adaptive next-wake.
+    # page. Uses retry-with-fresh-screencaps because the post-claim animation
+    # can briefly hide a badge, making a single OCR pass under-count. The
+    # daemon depends on these timers for adaptive scheduling — missing one
+    # means the next wake is too late.
     stamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%SZ")
     final_path = LOGS / f"{stamp}_final.png"
     cooldowns_seconds: list[int] = []
     try:
+        # Save one screenshot for audit, then run OCR with retries
         screen = device.screencap()
         import cv2
         cv2.imwrite(str(final_path), screen)
-        cds = read_cooldowns(screen)
+        cds = read_cooldowns_with_retry(
+            device,
+            max_attempts=int(cfg.get("ocr_max_attempts", 3)),
+            inter_attempt_seconds=float(cfg.get("ocr_inter_attempt_seconds", 4.0)),
+        )
         cooldowns_seconds = [c.seconds for c in cds]
     except Exception as e:
         log.warning("Could not save final screenshot / OCR cooldowns: %s", e)

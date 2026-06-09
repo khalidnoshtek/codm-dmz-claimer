@@ -85,15 +85,8 @@ EXPECTED_TIMER_COUNT = 3
 
 
 def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
-    """OCR the screen across multiple preprocessing variants × PSM modes,
-    regex-extract every `Remaining HH:MM:SS`, dedupe with a ±5s tolerance.
-
-    Why so many passes: a single binarization + PSM rarely catches all 3
-    LST Hunt timers — the badges sit over wolves whose bodies vary in
-    brightness, so a global Otsu threshold that works for the top-right
-    badge might wash out the bottom-right badge. Running multiple
-    preprocessings (Otsu, adaptive, CLAHE+Otsu) × multiple page-segmentation
-    modes maximizes the chance of catching every badge.
+    """OCR a single screen for `Remaining HH:MM:SS` timers.
+    For the retry-when-missing-timers behavior, see read_cooldowns_with_retry().
     """
     if not tesseract_available():
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
@@ -133,6 +126,48 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
     else:
         log.info("OCR found %d unique cooldown timer(s)", len(out))
     return out
+
+
+def read_cooldowns_with_retry(
+    device,
+    max_attempts: int = 3,
+    inter_attempt_seconds: float = 4.0,
+    expected: int = EXPECTED_TIMER_COUNT,
+) -> list[Cooldown]:
+    """Take a fresh screenshot, OCR, and if we found fewer than `expected`
+    timers, wait a few seconds and retry — the post-claim animation
+    sometimes hides a badge for a moment. After max_attempts we accept
+    whatever we have.
+
+    Returns the largest set of unique cooldowns seen across all attempts
+    (not just the last attempt), so a transient miss on attempt 2 doesn't
+    discard a successful read from attempt 1.
+    """
+    import time
+    best: list[Cooldown] = []
+    for attempt in range(1, max_attempts + 1):
+        screen = device.screencap()
+        cds = read_cooldowns(screen)
+        # Merge with best-so-far (across attempts), preserving ±5s dedup
+        DEDUP_WINDOW = 5
+        for cd in cds:
+            if not any(abs(b.seconds - cd.seconds) <= DEDUP_WINDOW for b in best):
+                best.append(cd)
+        log.info(
+            "OCR attempt %d/%d: %d timer(s) this pass, %d total unique",
+            attempt, max_attempts, len(cds), len(best),
+        )
+        if len(best) >= expected:
+            break  # got everything we expected
+        if attempt < max_attempts:
+            time.sleep(inter_attempt_seconds)
+    if len(best) < expected:
+        log.warning(
+            "OCR across %d attempt(s) found only %d/%d timers — proceeding anyway "
+            "(daemon's max-sleep ceiling will catch the missed one)",
+            max_attempts, len(best), expected,
+        )
+    return best
 
 
 def min_cooldown_seconds(screen_bgr: np.ndarray) -> int | None:

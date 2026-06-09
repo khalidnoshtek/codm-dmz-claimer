@@ -84,6 +84,14 @@ def loop_forever() -> int:
         else:
             base = period
             source = "config period"
+        # Hard ceiling: never sleep more than max_sleep_seconds. Even if OCR
+        # caught only an 8h-cooldown timer (missing a shorter one), we still
+        # wake to re-check. Trades extra cycles for guaranteed no-missed-claims.
+        max_sleep = float(cfg.get("max_sleep_seconds", 7200))  # 2h default
+        if base > max_sleep:
+            log.info("Capping sleep: OCR said %ds but max_sleep_seconds=%.0f", int(base), max_sleep)
+            base = max_sleep
+            source = f"{source} -> capped at max_sleep_seconds"
         wait = max(60.0, base + random.uniform(-jitter, jitter) + backoff)
         wake_at = time.time() + wait
         log.info("Sleeping %.0fs (source=%s, jitter=±%.0f, backoff=%ds) -> next ~ %s",
