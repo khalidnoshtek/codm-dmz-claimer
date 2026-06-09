@@ -55,14 +55,34 @@ class Step:
 # from each screen on the AVD to grab them.
 DEFAULT_STEPS: list[Step] = [
     Step(
+        name="dismiss_popups",
+        template="10_popup_close_x.png",
+        tap_all=True,
+        on_missing="skip",
+        notes="CODM throws promo popups ('DON'T MISS OUT', battle pass, event banners) "
+              "after launch — they cover the main lobby and have a small X close button "
+              "in the top-right of each popup. tap_all + the loop-until-dry logic in "
+              "run_step will tap every X visible, then re-scan, until no more are showing. "
+              "Skip-on-missing so the flow doesn't break when no popups appear (most days).",
+    ),
+    Step(
+        name="tap_home_icon",
+        template="08_home_icon.png",
+        on_missing="skip",
+        notes="The small HOUSE icon visible top-left on every CODM in-mode screen "
+              "(MULTIPLAYER, DMZ, BR, etc.). Tapping it returns to the main CODM lobby — "
+              "essential because CODM remembers the last mode and may cold-launch into "
+              "MULTIPLAYER (or whatever the user was last playing) instead of the main "
+              "lobby. Skip-on-missing so the flow still works when we land directly on "
+              "the main lobby (no home icon visible there).",
+    ),
+    Step(
         name="enter_dmz_mode",
         template="00_dmz_recon_mode.png",
         on_missing="skip",
         notes="From the CODM main lobby, tap DMZ: RECON to switch into DMZ mode. "
-              "Skip-on-missing because CODM remembers the last mode: if we lost the AVD "
-              "between cycles we cold-boot to main lobby (DMZ:RECON visible -> tap), but if "
-              "we only restarted CODM (warm AVD) we land directly in the DMZ lobby and this "
-              "step's template won't match — that's fine, the next step verifies we're on "
+              "Skip-on-missing because if we landed directly in the DMZ lobby (warm "
+              "relaunch), this template won't match — the next step verifies we're on "
               "the right screen either way.",
     ),
     Step(

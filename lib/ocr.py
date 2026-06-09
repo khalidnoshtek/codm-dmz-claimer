@@ -37,45 +37,71 @@ class Cooldown:
     seconds: int
 
 
-def _preprocess_for_ocr(screen_bgr: np.ndarray) -> np.ndarray:
+def _preprocess_for_ocr(screen_bgr: np.ndarray, upscale: float = 3.0) -> np.ndarray:
     """Convert the screen to a black-on-white binary image suitable for
     tesseract. The badges are light text on a dark background; we invert
-    so tesseract sees its preferred dark-text-on-light."""
+    so tesseract sees its preferred dark-text-on-light. Larger upscale
+    helps tesseract distinguish 6 vs 8 vs 0 — the most common misreads
+    on the LST Hunt badges where wolf body lighting reduces digit
+    contrast.
+    """
     gray = cv2.cvtColor(screen_bgr, cv2.COLOR_BGR2GRAY)
-    # Upscale moderately — tesseract is more accurate on larger glyphs
-    # but slows down linearly; 1.5x is a reasonable sweet spot.
-    gray = cv2.resize(gray, None, fx=1.5, fy=1.5, interpolation=cv2.INTER_CUBIC)
-    # Otsu thresholding; then invert if the result has more dark than light
-    # pixels (i.e. light-text-on-dark → flip to dark-text-on-light).
+    gray = cv2.resize(gray, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
+    # Boost local contrast before thresholding — CLAHE is far better than
+    # global Otsu when text sits over varying-brightness backgrounds (like
+    # the wolves whose bodies have bright highlights through them).
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     if binary.mean() < 127:
         binary = cv2.bitwise_not(binary)
     return binary
 
 
+def _ocr_text(image: np.ndarray, psm: int) -> str:
+    return pytesseract.image_to_string(
+        image,
+        config=f"--psm {psm} -c tessedit_char_whitelist=0123456789:Remaining ",
+    )
+
+
 def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
-    """OCR the whole screen, regex-extract every `Remaining HH:MM:SS`
-    occurrence, return them as Cooldown objects (in seconds). Order matches
-    tesseract's reading order (top-to-bottom, left-to-right), which is fine
-    for our use — we only consume `min(cooldowns_seconds)`."""
+    """OCR the whole screen at a high upscale, run tesseract under MULTIPLE
+    PSM modes (sparse text + single block), regex-extract every
+    `Remaining HH:MM:SS`, dedupe by HH:MM:SS value (single best read of
+    each timer survives). Returns a list of Cooldown in seconds.
+
+    Why multiple PSMs: PSM 11 (sparse text) catches scattered badges but
+    occasionally drops one. PSM 6 (single uniform block) catches it but
+    sometimes mangles the layout. Running both and merging gets the best
+    of both — same timer appearing in both passes is fine (we dedupe).
+    """
     if not tesseract_available():
         log.warning("tesseract binary not found on PATH — skipping cooldown OCR")
         return []
-    binary = _preprocess_for_ocr(screen_bgr)
-    # PSM 11 = "sparse text" — finds text wherever it is on the image without
-    # assuming a single block layout. Fits the LST Hunt screen where badges
-    # are scattered around the wolf models.
-    raw = pytesseract.image_to_string(
-        binary,
-        config="--psm 11 -c tessedit_char_whitelist=0123456789:RemainigRemainingabcdefghijklmnopqrstuvwxyz ",
-    )
-    out: list[Cooldown] = []
-    for m in TIME_RE.finditer(raw):
-        hh, mm, ss = m.group(1), m.group(2), m.group(3)
-        secs = int(hh) * 3600 + int(mm) * 60 + int(ss)
-        out.append(Cooldown(raw_text=m.group(0), seconds=secs))
-        log.info("read cooldown: %r -> %ds (~%.1fh)", m.group(0), secs, secs / 3600)
-    log.info("OCR found %d cooldown timer(s) in the screen text", len(out))
+    binary = _preprocess_for_ocr(screen_bgr, upscale=3.0)
+    seen: dict[tuple[int, int, int], Cooldown] = {}
+    for psm in (11, 6, 7):
+        try:
+            raw = _ocr_text(binary, psm)
+        except Exception as e:
+            log.warning("tesseract PSM %d failed: %s", psm, e)
+            continue
+        for m in TIME_RE.finditer(raw):
+            hh, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
+            # Sanity: minutes/seconds out of range -> probably an OCR error
+            if mm >= 60 or ss >= 60 or hh > 48:
+                log.debug("skipping nonsensical timer from PSM %d: %r", psm, m.group(0))
+                continue
+            key = (hh, mm, ss)
+            if key in seen:
+                continue
+            secs = hh * 3600 + mm * 60 + ss
+            cd = Cooldown(raw_text=m.group(0), seconds=secs)
+            seen[key] = cd
+            log.info("read cooldown (PSM %d): %r -> %ds (~%.1fh)", psm, m.group(0), secs, secs / 3600)
+    out = list(seen.values())
+    log.info("OCR found %d unique cooldown timer(s)", len(out))
     return out
 
 
