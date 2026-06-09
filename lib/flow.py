@@ -34,6 +34,7 @@ class Step:
     tap_all: bool = False               # tap every match instead of just the first
     tap: bool = True                    # tap the match (False = verify-only / "we're on the right screen")
     settle_after: float | None = None   # override the default per-step settle delay
+    timeout_override: float | None = None  # per-step timeout, overrides config.step_timeout_seconds
     optional: bool = False              # alias for on_missing="skip", reads nicer in the list
     pre_swipe: tuple[int, int, int, int, int] | None = None  # (x1,y1,x2,y2,duration_ms) before the search
     # After each tap, send an additional "anywhere" tap to dismiss a transient popup
@@ -69,12 +70,13 @@ DEFAULT_STEPS: list[Step] = [
         name="tap_home_icon",
         template="08_home_icon.png",
         on_missing="skip",
+        timeout_override=3.0,
         notes="The small HOUSE icon visible top-left on every CODM in-mode screen "
               "(MULTIPLAYER, DMZ, BR, etc.). Tapping it returns to the main CODM lobby — "
               "essential because CODM remembers the last mode and may cold-launch into "
               "MULTIPLAYER (or whatever the user was last playing) instead of the main "
-              "lobby. Skip-on-missing so the flow still works when we land directly on "
-              "the main lobby (no home icon visible there).",
+              "lobby. Short timeout because after dismiss_popups we're already at the "
+              "main lobby — the home icon doesn't exist there, no point waiting 20s.",
     ),
     Step(
         name="enter_dmz_mode",
@@ -180,7 +182,10 @@ def run_step(
         device.swipe(x1, y1, x2, y2, dur)
         time.sleep(0.8)
 
-    deadline = time.time() + step_timeout
+    # Per-step timeout override — useful for fast skip-eligible checks like
+    # tap_home_icon which doesn't need the full 20s budget.
+    effective_timeout = step.timeout_override if step.timeout_override is not None else step_timeout
+    deadline = time.time() + effective_timeout
     while time.time() < deadline:
         screen = device.screencap()
         if step.tap_all:
@@ -238,7 +243,8 @@ def run_step(
                 return True, 1
         time.sleep(0.6)
 
-    log.warning("step %s: template never appeared (last best score < threshold)", step.name)
+    log.warning("step %s: template never appeared within %.1fs (last best score < threshold)",
+                step.name, effective_timeout)
     return (step.on_missing in ("skip",) or step.optional), 0
 
 
