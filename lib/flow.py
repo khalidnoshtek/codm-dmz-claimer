@@ -130,6 +130,7 @@ DEFAULT_STEPS: list[Step] = [
         on_missing="skip",
         threshold_override=0.72,
         max_taps=3,  # LST Hunt has exactly 3 cards — cap so a loose threshold can't over-tap
+        settle_after=1.0,  # was 2.5s default — cuts dead-time between rounds in half
         # The 'you got X' popup that appears after each claim closes on any
         # tap — so we don't template-match an OK button, we just tap the
         # screen center which lands on the popup's overlay and dismisses it.
