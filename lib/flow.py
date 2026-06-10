@@ -230,34 +230,31 @@ def run_step(
                 empty_streak = 0  # reset patience counter when we find something
                 log.info("step %s: round %d found %d match(es) (scores=%s)",
                          step.name, round_idx, len(hits), [round(h.score, 3) for h in hits])
-                cap_hit = False
-                for h in hits:
-                    if step.max_taps is not None and total_tapped >= step.max_taps:
-                        log.info("step %s: max_taps=%d reached — stopping (loose threshold "
-                                 "may be hitting false positives)", step.name, step.max_taps)
-                        cap_hit = True
-                        break
-                    if dry_run:
-                        log.info("  [dry-run] would tap (%d,%d)", h.x, h.y)
-                    else:
-                        device.tap(h.x, h.y)
-                    total_tapped += 1
-                    if step.dismiss_after_tap and not dry_run:
-                        # Wait briefly for the popup to render, then send two
-                        # dismiss-taps a few hundred ms apart. The first tap
-                        # may fire before the popup is fully drawn (no-op);
-                        # the second catches it. This roughly halves the
-                        # visible popup time vs a single longer-paused tap.
-                        time.sleep(step.dismiss_pause_seconds)
-                        dx, dy = step.dismiss_after_tap
-                        log.info("  dismiss-tap (%d,%d) x2", dx, dy)
-                        device.tap(dx, dy)
-                        time.sleep(0.4)
-                        device.tap(dx, dy)
-                    time.sleep(tap_settle)
-                time.sleep(step.settle_after or settle_default)
-                if cap_hit:
+                # Tap ONLY the first (highest-score) hit, then break out of
+                # the inner loop. Outer loop re-screencaps next iteration —
+                # so each tap uses fresh coordinates from a freshly-rendered
+                # screen instead of stale coords cached when round 1 started.
+                # Without this, claim 2's tap can land on the still-animating
+                # popup from claim 1 (with stale coords for where the card
+                # WAS) and silently fail to claim.
+                if step.max_taps is not None and total_tapped >= step.max_taps:
+                    log.info("step %s: max_taps=%d reached — stopping", step.name, step.max_taps)
                     break
+                h = hits[0]
+                if dry_run:
+                    log.info("  [dry-run] would tap (%d,%d) score=%.3f", h.x, h.y, h.score)
+                else:
+                    device.tap(h.x, h.y)
+                total_tapped += 1
+                if step.dismiss_after_tap and not dry_run:
+                    time.sleep(step.dismiss_pause_seconds)
+                    dx, dy = step.dismiss_after_tap
+                    log.info("  dismiss-tap (%d,%d) x2", dx, dy)
+                    device.tap(dx, dy)
+                    time.sleep(0.4)
+                    device.tap(dx, dy)
+                time.sleep(tap_settle)
+                time.sleep(step.settle_after or settle_default)
             if total_tapped > 0:
                 return True, total_tapped
         else:
