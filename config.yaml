@@ -67,9 +67,10 @@ max_sleep_seconds: 7200
 
 # Tighter cap when OCR found FEWER than 3 timers — we can't trust the schedule
 # because the min cooldown we read might be from a long-cooldown card while a
-# shorter one was missed. Re-check sooner. Default 1200s (20min) catches most
-# missed short timers before they sit unclaimed too long.
-low_confidence_sleep_seconds: 1200
+# shorter one was missed. Re-check sooner. 3600s (1h) is a balance between
+# catching missed short timers and not over-polling. Tighten to ~1200 if you
+# care more about claiming-asap-after-expiry than about cycle count.
+low_confidence_sleep_seconds: 3600
 
 # OCR retry: if read_cooldowns finds fewer than the expected 3 timers, take
 # additional screenshots with delays between them. Handles transient post-
