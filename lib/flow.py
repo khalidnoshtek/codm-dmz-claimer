@@ -132,10 +132,15 @@ DEFAULT_STEPS: list[Step] = [
         max_taps=3,  # LST Hunt has exactly 3 cards — cap so a loose threshold can't over-tap
         settle_after=1.0,  # was 2.5s default — cuts dead-time between rounds in half
         # The 'you got X' popup that appears after each claim closes on any
-        # tap — so we don't template-match an OK button, we just tap the
-        # screen center which lands on the popup's overlay and dismisses it.
-        # On a 3120x1440 landscape AVD the center is (1560, 720).
-        dismiss_after_tap=(1560, 720),
+        # tap. We tap a corner location instead of the center because the
+        # center (1560, 720 on a 3120x1440 screen) is EXACTLY where the
+        # middle wolf's "Tap to Claim" badge sits — a center-tap dismisses
+        # the popup AND accidentally claims the middle wolf, which made the
+        # daemon's subsequent re-find return 0 matches and skip the
+        # rightmost card. (200, 200) is in the upper-left header area —
+        # safe even if the popup overlay isn't there, no wolf badges, no
+        # interactive UI other than the back arrow at (88, 80).
+        dismiss_after_tap=(200, 200),
         dismiss_pause_seconds=0.5,
         notes="The purple 'Tap to Claim' badge. tap_all=True so we hit every ready reward; "
               "loose threshold (0.72 vs global 0.82) because the text is distinctive enough "
