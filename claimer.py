@@ -74,6 +74,15 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     device = AdbDevice.auto()
     log.info("ADB device: %s (dry_run=%s)", device.serial, dry_run)
 
+    # The AVD now boots to a pattern lock. Wake + unlock before touching CODM,
+    # otherwise every input lands on the keyguard and the flow aborts at
+    # dmz_lobby_check. No-op if the screen is already unlocked.
+    lock_cfg = cfg.get("lockscreen") or {}
+    if lock_cfg.get("enabled"):
+        if not device.ensure_unlocked(lock_cfg):
+            log.error("Could not get past the lock screen — aborting cycle")
+            return {"ok": False, "reason": "lockscreen", "target_avd": LOCKED_AVD}
+
     pkg = cfg["package"]
     activity = cfg.get("activity") or None
 
@@ -122,6 +131,19 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     # back_to_lobby step, capture the screen + OCR, then run the back step.
     nav_steps = [s for s in DEFAULT_STEPS if s.name != "back_to_lobby"]
     back_step = next((s for s in DEFAULT_STEPS if s.name == "back_to_lobby"), None)
+
+    # The login-screen popup is temporary — once it's gone, set
+    # login_popup_enabled: false so we don't burn the step's 120s timeout
+    # waiting for a popup that will never show.
+    if not bool(cfg.get("login_popup_enabled", True)):
+        nav_steps = [s for s in nav_steps if s.name != "login_popup_confirm"]
+        # With the popup gone, its long wait no longer absorbs a slow launch /
+        # small update. extra_launch_settle_seconds gives that time back if
+        # updates start causing dmz_lobby_check aborts again.
+        extra = float(cfg.get("extra_launch_settle_seconds", 0))
+        if extra > 0 and cold_launch and not dry_run:
+            log.info("Extra post-launch settle: %.0fs (login popup disabled)", extra)
+            time.sleep(extra)
 
     result = run_flow(
         device,

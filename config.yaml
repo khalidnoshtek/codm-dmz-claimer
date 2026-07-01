@@ -77,3 +77,42 @@ low_confidence_sleep_seconds: 3600
 # claim animations that briefly hide a badge.
 ocr_max_attempts: 3
 ocr_inter_attempt_seconds: 4.0
+
+# --- Lock screen (pattern) --------------------------------------------------
+# The AVD boots to a pattern lock. Each cycle the daemon wakes the screen,
+# swipes up to reveal the pattern grid, then draws the pattern below before
+# launching CODM. Dots are numbered like a phone keypad:
+#     1 2 3
+#     4 5 6
+#     7 8 9
+lockscreen:
+  enabled: true
+  # Verified working on CODM_Pixel9 (1440x3120, Android 15) 2026-07-01.
+  # Pattern = center -> top-right -> mid-right -> bottom-right (dots 5,3,6,9).
+  pattern: [5, 3, 6, 9]
+  # Geometry of the 3x3 grid in DEVICE PIXELS. grid_origin = center of dot 1
+  # (top-left). grid_spacing = [dx, dy] between adjacent dot centers. Measured
+  # values give dot centers at x=290/720/1150, y=1600/2030/2460.
+  grid_origin: [290, 1600]
+  grid_spacing: [430, 430]
+  # A tap is needed to make the display interactive before swiping — WAKEUP
+  # alone leaves a dark always-on state that ignores gestures. Center-ish,
+  # lands on empty wallpaper.
+  tap_wake_xy: [720, 1500]
+  # Swipe up to reveal the pattern bouncer. [x1, y1, x2, y2, duration_ms].
+  reveal_swipe: [720, 2500, 720, 800, 200]
+  # Pause after drawing the pattern for the unlock animation to finish.
+  settle_after_unlock_seconds: 2.0
+
+# --- Login popup (temporary, mid-2026) --------------------------------------
+# CODM currently shows a one-time popup on the login screen with a confirm
+# button. The flow taps it via the 06_login_popup_confirm.png template. It will
+# disappear on its own after a few days — set this to false then, and the
+# daemon drops the step entirely (no wasted wait).
+login_popup_enabled: true
+
+# When login_popup_enabled is false, this many extra seconds of settle are
+# added after a COLD launch to absorb the occasional small on-launch update
+# (progress bar, then auto-continues). 0 = no extra wait. Bump to ~60 if
+# updates start causing dmz_lobby_check aborts once the popup is gone.
+extra_launch_settle_seconds: 0

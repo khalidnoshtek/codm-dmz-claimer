@@ -229,6 +229,124 @@ class AdbDevice:
     def home(self) -> None:
         self.key("KEYCODE_HOME")
 
+    def wake(self) -> None:
+        # KEYCODE_WAKEUP (224) turns the screen on without toggling it back off
+        # if it was already on (unlike KEYCODE_POWER, which is a toggle).
+        self.key("KEYCODE_WAKEUP")
+
+    # --- lock screen ---------------------------------------------------------
+
+    def is_locked(self) -> bool:
+        """Best-effort keyguard check via `dumpsys window`. Returns False when
+        the state can't be determined so we never draw a pattern gesture onto
+        an already-unlocked home screen (which could tap/drag real UI)."""
+        out = subprocess.run(
+            self._cmd("shell", "dumpsys", "window"),
+            check=False, capture_output=True, text=True,
+        ).stdout
+        for line in out.splitlines():
+            s = line.strip()
+            if s.startswith("mDreamingLockscreen"):
+                return s.endswith("true")
+        # Fallback: keyguard owns the focused window while locked.
+        for line in out.splitlines():
+            s = line.strip()
+            if s.startswith("mCurrentFocus") and ("Keyguard" in s or "NotificationShade" in s):
+                return True
+        return False
+
+    @staticmethod
+    def _dot_xy(idx: int, origin: tuple[int, int], spacing: tuple[int, int]) -> tuple[int, int]:
+        """Pixel center of dot `idx` on the 3x3 pattern grid. Dots are numbered
+        like a phone keypad: 1=top-left, 2=top-mid, 3=top-right, ... 9=bottom-right."""
+        col = (idx - 1) % 3
+        row = (idx - 1) // 3
+        return (origin[0] + col * spacing[0], origin[1] + row * spacing[1])
+
+    def draw_pattern(self, pattern: list[int], origin, spacing) -> None:
+        """Draw an unlock pattern as a single continuous gesture using
+        `input motionevent` (DOWN on the first dot, MOVE through each subsequent
+        dot, UP on the last). One interpolated midpoint is inserted between
+        consecutive dots so the swept path reliably crosses each dot's hit
+        region rather than teleporting between centers."""
+        origin = (int(origin[0]), int(origin[1]))
+        spacing = (int(spacing[0]), int(spacing[1]))
+        pts = [self._dot_xy(i, origin, spacing) for i in pattern]
+        if len(pts) < 2:
+            return
+        parts = [f"input motionevent DOWN {pts[0][0]} {pts[0][1]}"]
+        prev = pts[0]
+        for cur in pts[1:]:
+            mid = ((prev[0] + cur[0]) // 2, (prev[1] + cur[1]) // 2)
+            parts.append(f"input motionevent MOVE {mid[0]} {mid[1]}")
+            parts.append(f"input motionevent MOVE {cur[0]} {cur[1]}")
+            prev = cur
+        parts.append(f"input motionevent UP {pts[-1][0]} {pts[-1][1]}")
+        # Chain in one device shell so the events form a single uninterrupted
+        # gesture (separate adb invocations add ~100ms gaps that can split it).
+        self._run("shell", " ; ".join(parts))
+
+    def keep_awake(self) -> None:
+        """Stop the display sleeping during the claim flow. WAKEUP alone leaves
+        the emulator in a dark always-on state where injected gestures don't
+        register, and the default screen-off timeout is only a few seconds.
+        Both settings persist in the AVD's userdata, so this is idempotent and
+        cheap to re-apply each cycle (guards against a wiped/recreated AVD)."""
+        # 7 = stay on while charging on AC | USB | wireless. The emulator always
+        # reports charging, so this holds the screen on indefinitely.
+        self._run("shell", "settings", "put", "global", "stay_on_while_plugged_in", "7", check=False)
+        self._run("shell", "settings", "put", "system", "screen_off_timeout", "1800000", check=False)
+
+    def ensure_unlocked(self, lock_cfg: dict, attempts: int = 2) -> bool:
+        """Wake the screen and, if the keyguard is up, draw the configured
+        pattern to unlock. No-op if already unlocked. Returns True if the
+        device ends up unlocked.
+
+        Sequence (matches what actually works on the Pixel 9 AVD, Android 15):
+        WAKEUP -> tap (make the display interactive; WAKEUP alone can leave a
+        dark AOD that ignores gestures) -> swipe up to reveal the pattern
+        bouncer -> draw the pattern. The bouncer is a secure surface so it
+        screenshots as black; we verify success via the keyguard flag, not a
+        template match."""
+        import logging as _log
+        log = _log.getLogger(__name__)
+        self.keep_awake()
+        tw = lock_cfg.get("tap_wake_xy", [720, 1500])
+        tw = (int(tw[0]), int(tw[1]))
+        self.wake()
+        time.sleep(0.5)
+        # A tap fully wakes the display to the interactive lock screen.
+        self.tap(*tw)
+        time.sleep(0.5)
+        if not self.is_locked():
+            log.info("Screen already unlocked")
+            return True
+        pattern = lock_cfg.get("pattern") or []
+        origin = lock_cfg.get("grid_origin")
+        spacing = lock_cfg.get("grid_spacing")
+        if not (pattern and origin and spacing):
+            log.warning("Screen locked but lockscreen config incomplete "
+                        "(pattern/grid_origin/grid_spacing) — cannot unlock")
+            return False
+        reveal = lock_cfg.get("reveal_swipe")
+        settle = float(lock_cfg.get("settle_after_unlock_seconds", 2.0))
+        for i in range(1, attempts + 1):
+            self.wake()
+            self.tap(*tw)
+            time.sleep(0.5)
+            if reveal:
+                # Swipe up to reveal the pattern bouncer.
+                self.swipe(*[int(v) for v in reveal])
+                time.sleep(0.8)
+            log.info("Drawing unlock pattern (attempt %d/%d)", i, attempts)
+            self.draw_pattern(pattern, origin, spacing)
+            time.sleep(settle)
+            if not self.is_locked():
+                log.info("Unlocked on attempt %d", i)
+                return True
+            log.warning("Still locked after attempt %d", i)
+        return not self.is_locked()
+
     # --- app lifecycle -------------------------------------------------------
 
     def is_app_foreground(self, package: str) -> bool:

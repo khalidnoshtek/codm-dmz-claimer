@@ -58,6 +58,23 @@ class Step:
 # from each screen on the AVD to grab them.
 DEFAULT_STEPS: list[Step] = [
     Step(
+        name="login_popup_confirm",
+        template="06_login_popup_confirm.png",
+        on_missing="skip",
+        timeout_override=120.0,
+        # After CONFIRM the game runs its ~12s auto-login before the lobby (and
+        # its promo popups) appear. Settle long enough that the NEXT step
+        # (dismiss_popups, 5s timeout) starts once the lobby is actually up.
+        settle_after=15.0,
+        notes="TEMPORARY (mid-2026): CODM shows a one-time popup on the login screen "
+              "with a confirm button. It'll disappear on its own after a few days — set "
+              "login_popup_enabled: false in config.yaml then (the daemon drops this step "
+              "when disabled). The long 120s timeout does double duty: it waits out slow "
+              "cold launches AND the occasional small on-launch game update (progress bar "
+              "then auto-continues to login) before the popup appears. Capture the button "
+              "with:  .venv/bin/python capture.py interactive --name 06_login_popup_confirm",
+    ),
+    Step(
         name="dismiss_popups",
         template="10_popup_close_x.png",
         tap_all=True,
