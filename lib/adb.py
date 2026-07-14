@@ -45,6 +45,7 @@ def ensure_avd_running(
     avd_name: str,
     boot_timeout: float = 240.0,
     post_boot_settle_seconds: float = 10.0,
+    headless: bool = True,
 ) -> str:
     """If the locked AVD is already attached via ADB, return its serial.
     Otherwise launch it via the Android emulator binary, wait for it to come
@@ -58,6 +59,12 @@ def ensure_avd_running(
     storage mounts, and PackageManager often need another ~30s before apps
     can be launched cleanly. We only sleep this delay if we actually booted
     the AVD; warm reuse skips it entirely.
+
+    headless=True adds `-no-window` so the emulator UI never appears on the
+    Mac — no window popping up mid-meeting / screen-share. Rendering still
+    runs on the host GPU offscreen, so `screencap` and template matching are
+    unaffected. `-no-audio` is always passed so CODM never plays sound through
+    the Mac's speakers while the daemon runs.
     """
     import logging as _log
     log = _log.getLogger(__name__)
@@ -72,16 +79,20 @@ def ensure_avd_running(
             return d
     # Cold path: launch the emulator. Detach stdio so the child survives our
     # exit — the daemon doesn't want to babysit it.
-    log.info("Launching AVD %r (cold)", avd_name)
+    log.info("Launching AVD %r (cold, headless=%s)", avd_name, headless)
     emu = _emulator_binary()
+    emu_args = [
+        str(emu), "-avd", avd_name,
+        "-no-snapshot",
+        "-gpu", "auto",
+        "-no-audio",
+        "-netspeed", "full",
+        "-netdelay", "none",
+    ]
+    if headless:
+        emu_args.append("-no-window")
     subprocess.Popen(
-        [
-            str(emu), "-avd", avd_name,
-            "-no-snapshot",
-            "-gpu", "auto",
-            "-netspeed", "full",
-            "-netdelay", "none",
-        ],
+        emu_args,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
         start_new_session=True,
@@ -237,22 +248,35 @@ class AdbDevice:
     # --- lock screen ---------------------------------------------------------
 
     def is_locked(self) -> bool:
-        """Best-effort keyguard check via `dumpsys window`. Returns False when
-        the state can't be determined so we never draw a pattern gesture onto
-        an already-unlocked home screen (which could tap/drag real UI)."""
+        """Keyguard check via `dumpsys window`, keyed on the focused window.
+
+        We deliberately do NOT trust `mDreamingLockscreen`: after a successful
+        unlock it lags ~2-3s staying `true` while the focused window has
+        already switched to the launcher. Keying on `mCurrentFocus` reflects
+        the unlock instantly. When locked (clock or pattern bouncer) the
+        focused window is the system shade / keyguard; when unlocked a real
+        activity (package/activity, contains '/') is focused. Falls back to the
+        laggy flag only when focus is indeterminate (e.g. mid-animation null)."""
         out = subprocess.run(
             self._cmd("shell", "dumpsys", "window"),
             check=False, capture_output=True, text=True,
         ).stdout
+        focus = None
+        for line in out.splitlines():
+            s = line.strip()
+            if s.startswith("mCurrentFocus"):
+                focus = s
+                break
+        if focus is not None:
+            if "NotificationShade" in focus or "Keyguard" in focus or "Bouncer" in focus:
+                return True
+            if "/" in focus:  # a real activity/launcher is focused -> unlocked
+                return False
+        # Focus indeterminate: fall back to the keyguard flag.
         for line in out.splitlines():
             s = line.strip()
             if s.startswith("mDreamingLockscreen"):
                 return s.endswith("true")
-        # Fallback: keyguard owns the focused window while locked.
-        for line in out.splitlines():
-            s = line.strip()
-            if s.startswith("mCurrentFocus") and ("Keyguard" in s or "NotificationShade" in s):
-                return True
         return False
 
     @staticmethod
@@ -340,10 +364,15 @@ class AdbDevice:
                 time.sleep(0.8)
             log.info("Drawing unlock pattern (attempt %d/%d)", i, attempts)
             self.draw_pattern(pattern, origin, spacing)
-            time.sleep(settle)
-            if not self.is_locked():
-                log.info("Unlocked on attempt %d", i)
-                return True
+            # Poll for the focus to leave the keyguard. is_locked() reflects the
+            # unlock instantly; we still give it a few seconds of slack for the
+            # unlock animation before retrying with a fresh pattern.
+            deadline = time.time() + settle + 4.0
+            while time.time() < deadline:
+                if not self.is_locked():
+                    log.info("Unlocked on attempt %d", i)
+                    return True
+                time.sleep(0.5)
             log.warning("Still locked after attempt %d", i)
         return not self.is_locked()
 

@@ -66,7 +66,11 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     # has to be on. The AVD name is hard-locked in lib/adb.py (LOCKED_AVD);
     # config.yaml is ignored to prevent accidental redirection.
     try:
-        ensure_avd_running(LOCKED_AVD, boot_timeout=float(cfg.get("avd_boot_timeout_seconds", 240)))
+        ensure_avd_running(
+            LOCKED_AVD,
+            boot_timeout=float(cfg.get("avd_boot_timeout_seconds", 240)),
+            headless=bool(cfg.get("emulator_headless", True)),
+        )
     except Exception as e:
         log.error("Could not start/find locked AVD %s: %s", LOCKED_AVD, e)
         return {"ok": False, "reason": "avd_not_running", "target_avd": LOCKED_AVD, "error": str(e)}

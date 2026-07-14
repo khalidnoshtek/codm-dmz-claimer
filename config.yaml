@@ -42,6 +42,14 @@ step_timeout_seconds: 20
 # tuning templates.
 dry_run: false
 
+# Launch the AVD headless (-no-window) so the emulator UI never pops up on the
+# Mac — keeps it off-screen during online meetings / screen-sharing. Rendering
+# still runs on the host GPU offscreen, so screencap + template matching are
+# unaffected. The emulator also always launches with -no-audio so CODM never
+# plays sound through the Mac. Set to false if you want to watch the AVD window
+# live (e.g. while tuning templates).
+emulator_headless: true
+
 # At end of each cycle, force-stop CODM AND shut down the AVD entirely.
 # Saves Mac RAM/CPU during the multi-hour wait between cycles. The next
 # cycle's start re-launches the AVD via ensure_avd_running, which waits
