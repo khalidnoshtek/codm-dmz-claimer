@@ -88,6 +88,12 @@ def ensure_avd_running(
         "-no-audio",
         "-netspeed", "full",
         "-netdelay", "none",
+        # Force a public DNS. The emulator's default resolver (10.0.2.3, which
+        # proxies host DNS) intermittently fails to reach CODM's asset CDN,
+        # producing "Network error. Please check your connection." on the
+        # resource-download screen even though general internet works. Pinning
+        # 8.8.8.8/8.8.4.4 fixes the download hang.
+        "-dns-server", "8.8.8.8,8.8.4.4",
     ]
     if headless:
         emu_args.append("-no-window")

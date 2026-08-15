@@ -94,7 +94,13 @@ ocr_inter_attempt_seconds: 4.0
 #     4 5 6
 #     7 8 9
 lockscreen:
-  enabled: true
+  # DISABLED: the AVD's secure lock was removed at the device level
+  #   adb -s <emu> shell locksettings clear --old 5369
+  # because SystemUI kept ANR-ing on the headless keyguard and freezing the
+  # framebuffer, so the pattern unlock couldn't run reliably. The AVD now
+  # boots straight to the launcher. Flip back to true ONLY if you re-add a
+  # lock on the device (the pattern/grid below still describe the old one).
+  enabled: false
   # Verified working on CODM_Pixel9 (1440x3120, Android 15) 2026-07-01.
   # Pattern = center -> top-right -> mid-right -> bottom-right (dots 5,3,6,9).
   pattern: [5, 3, 6, 9]

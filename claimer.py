@@ -78,9 +78,16 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     device = AdbDevice.auto()
     log.info("ADB device: %s (dry_run=%s)", device.serial, dry_run)
 
-    # The AVD now boots to a pattern lock. Wake + unlock before touching CODM,
-    # otherwise every input lands on the keyguard and the flow aborts at
-    # dmz_lobby_check. No-op if the screen is already unlocked.
+    # Keep the display awake so headless rendering stays fresh and screencaps
+    # don't come back frozen (idempotent — persists in the AVD's userdata).
+    device.keep_awake()
+
+    # Lock screen: the AVD's secure lock was removed at the device level
+    # (locksettings clear) because SystemUI kept ANR-ing on the headless
+    # keyguard, freezing the framebuffer so the pattern unlock couldn't run.
+    # With no lock, boot lands straight on the launcher. The unlock path is
+    # kept behind lockscreen.enabled purely as a fallback if a lock ever
+    # reappears; it's a no-op when the screen is already unlocked.
     lock_cfg = cfg.get("lockscreen") or {}
     if lock_cfg.get("enabled"):
         if not device.ensure_unlocked(lock_cfg):
