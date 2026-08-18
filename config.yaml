@@ -86,6 +86,15 @@ low_confidence_sleep_seconds: 3600
 ocr_max_attempts: 3
 ocr_inter_attempt_seconds: 4.0
 
+# --- Status dashboard (GitHub Pages) ----------------------------------------
+# After each cycle the daemon writes docs/status.json (last run + next run
+# time) for the dashboard at docs/index.html, served via GitHub Pages. Set
+# publish_status: false to stop writing it entirely; publish_status_push:
+# false to write it locally but not git-commit/push (useful for local-only
+# viewing without cluttering history).
+publish_status: true
+publish_status_push: true
+
 # --- Lock screen (pattern) --------------------------------------------------
 # The AVD boots to a pattern lock. Each cycle the daemon wakes the screen,
 # swipes up to reveal the pattern grid, then draws the pattern below before

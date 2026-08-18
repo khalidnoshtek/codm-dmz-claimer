@@ -22,8 +22,40 @@ from pathlib import Path
 
 from claimer import claim_once, load_config, setup_logging
 from lib.wake import schedule_wake, cancel_wakes
+from lib.status import publish_status
 
 ROOT = Path(__file__).resolve().parent
+
+
+def _result_text(summary: dict | None) -> str:
+    """One-line human-readable outcome, mirroring claimer's status.log line."""
+    if not isinstance(summary, dict):
+        return "unknown"
+    if not summary.get("ok"):
+        return f"FAILED at {summary.get('aborted_at') or 'unknown'}"
+    claimed = summary.get("claims_attempted") or 0
+    return f"CLAIMED {claimed} reward(s)" if claimed else "nothing claimable"
+
+
+def _publish(cfg: dict, state: str, *, summary: dict | None = None,
+             wake_at: float | None = None, source: str | None = None) -> None:
+    """Best-effort push of the current status to docs/status.json for the
+    GitHub Pages dashboard. Controlled by config `publish_status` (default on)."""
+    if not bool(cfg.get("publish_status", True)):
+        return
+    status: dict = {"state": state}
+    if summary is not None:
+        cds = sorted(summary.get("cooldowns_seconds") or [])
+        status["last_run"] = {
+            "epoch": int(time.time()),
+            "ok": bool(summary.get("ok")),
+            "result": _result_text(summary),
+            "claims": summary.get("claims_attempted") or 0,
+            "cooldowns_hours": [round(s / 3600, 1) for s in cds],
+        }
+    if wake_at is not None:
+        status["next_run"] = {"epoch": int(wake_at), "source": source or ""}
+    publish_status(status, ROOT, push=bool(cfg.get("publish_status_push", True)))
 
 
 _stopping = False
@@ -42,11 +74,17 @@ def loop_forever() -> int:
     signal.signal(signal.SIGTERM, _handle_stop)
 
     consecutive_failures = 0
+    prev_summary: dict | None = None
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
         jitter = float(cfg.get("loop_jitter_seconds", 600))
 
+        # Tell the dashboard a cycle is starting (carry the previous run's
+        # result so it stays visible while this one runs).
+        _publish(cfg, "running", summary=prev_summary)
+
+        summary = None  # bound even if claim_once throws (used below + in _publish)
         try:
             log.info("--- Cycle start ---")
             summary = claim_once(cfg)
@@ -129,6 +167,10 @@ def loop_forever() -> int:
         log.info("Sleeping %.0fs (source=%s, jitter=±%.0f, backoff=%ds) -> next ~ %s",
                  wait, source, jitter, backoff,
                  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(wake_at)))
+
+        # Publish last-run result + next-run time for the dashboard countdown.
+        _publish(cfg, "sleeping", summary=summary, wake_at=wake_at, source=source)
+        prev_summary = summary if isinstance(summary, dict) else prev_summary
 
         # Schedule macOS to wake itself just before the sleep ends. Only worth
         # the round-trip if the wait is long enough (short waits leave no time

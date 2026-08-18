@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DMZ Claimer Status</title>
+<style>
+  :root{
+    --bg:#0b0f14; --panel:#141b24; --panel2:#1b2531; --line:#243040;
+    --txt:#e7edf3; --muted:#8595a7; --accent:#39d98a; --accent2:#4aa8ff;
+    --warn:#ffb020; --danger:#ff5470; --shadow:0 6px 24px rgba(0,0,0,.35);
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#12202c,var(--bg)) fixed;
+    color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased;
+    min-height:100vh;padding:20px 16px 40px;}
+  .wrap{max-width:680px;margin:0 auto;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 20px;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 4px rgba(255,255,255,.04);}
+  .dot.live{background:var(--accent);animation:pulse 1.6s infinite;}
+  .dot.run{background:var(--accent2);animation:pulse 1s infinite;}
+  .dot.stale{background:var(--danger);}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(57,217,138,.5)}70%{box-shadow:0 0 0 10px rgba(57,217,138,0)}100%{box-shadow:0 0 0 0 rgba(57,217,138,0)}}
+  .sub{color:var(--muted);font-size:12px;}
+  .hero{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+    border-radius:18px;padding:26px 22px;box-shadow:var(--shadow);text-align:center;position:relative;overflow:hidden;}
+  .hero .label{color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-size:12px;font-weight:600;}
+  .count{font-family:var(--mono);font-size:clamp(44px,14vw,84px);font-weight:700;line-height:1.05;margin:8px 0 4px;
+    letter-spacing:1px;font-variant-numeric:tabular-nums;}
+  .when{color:var(--muted);font-size:14px;}
+  .banner{margin-top:18px;border-radius:12px;padding:12px 14px;font-weight:600;font-size:14px;display:none;}
+  .banner.safe{display:block;background:rgba(57,217,138,.12);color:var(--accent);border:1px solid rgba(57,217,138,.3);}
+  .banner.soon{display:block;background:rgba(255,176,32,.12);color:var(--warn);border:1px solid rgba(255,176,32,.35);}
+  .banner.run{display:block;background:rgba(74,168,255,.12);color:var(--accent2);border:1px solid rgba(74,168,255,.35);}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+  @media(max-width:520px){.grid{grid-template-columns:1fr;}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
+  .card h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;}
+  .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:14px;}
+  .row .k{color:var(--muted);} .row .v{font-weight:600;text-align:right;}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+  .pill.ok{background:rgba(57,217,138,.15);color:var(--accent);}
+  .pill.none{background:rgba(133,149,167,.18);color:var(--muted);}
+  .pill.fail{background:rgba(255,84,112,.15);color:var(--danger);}
+  .cds{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
+  .cd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:2px 8px;color:var(--txt);}
+  footer{margin-top:22px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;}
+  a{color:var(--accent2);text-decoration:none;}
+  .mut{color:var(--muted);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span id="dot" class="dot"></span> CODM DMZ Claimer</div>
+    <div class="sub" id="updated">loading…</div>
+  </header>
+
+  <section class="hero">
+    <div class="label" id="heroLabel">Next run in</div>
+    <div class="count" id="count">--:--:--</div>
+    <div class="when" id="when">&nbsp;</div>
+    <div class="banner" id="banner"></div>
+  </section>
+
+  <div class="grid">
+    <div class="card">
+      <h3>Last run</h3>
+      <div class="row"><span class="k">Result</span><span class="v" id="lastResult">—</span></div>
+      <div class="row"><span class="k">When</span><span class="v" id="lastWhen">—</span></div>
+      <div class="row"><span class="k">Cooldowns</span><span class="v"><span class="cds" id="lastCds">—</span></span></div>
+    </div>
+    <div class="card">
+      <h3>Next run</h3>
+      <div class="row"><span class="k">At</span><span class="v" id="nextAt">—</span></div>
+      <div class="row"><span class="k">Status</span><span class="v" id="stateTxt">—</span></div>
+      <div class="row"><span class="k">Basis</span><span class="v mut" id="source" style="font-size:12px">—</span></div>
+    </div>
+  </div>
+
+  <footer>
+    Auto-refreshes every 20s · countdown is when the daemon next drives the AVD.<br>
+    <span class="mut">If you're in a match, wrap up before the countdown hits zero.</span>
+  </footer>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2,'0');
+
+function fmtDur(sec){
+  sec = Math.max(0, Math.floor(sec));
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
+  return pad(h)+':'+pad(m)+':'+pad(s);
+}
+function fmtClock(epoch){
+  const d = new Date(epoch*1000);
+  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) +
+         ' · ' + d.toLocaleDateString([], {month:'short', day:'numeric'});
+}
+function ago(epoch){
+  const s = Math.floor(Date.now()/1000) - epoch;
+  if (s < 60) return s+'s ago';
+  if (s < 3600) return Math.floor(s/60)+'m ago';
+  if (s < 86400) return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m ago';
+  return Math.floor(s/86400)+'d ago';
+}
+
+let data = null;
+
+async function load(){
+  try{
+    const r = await fetch('status.json?t=' + Date.now(), {cache:'no-store'});
+    data = await r.json();
+    render();
+  }catch(e){ /* keep last data; tick() will show staleness */ }
+}
+
+function render(){
+  if(!data) return;
+  // updated / staleness
+  const upd = data.updated_at_epoch || 0;
+  const staleSec = Math.floor(Date.now()/1000) - upd;
+  $('updated').textContent = upd ? ('updated ' + ago(upd)) : 'no data yet';
+
+  // last run
+  const lr = data.last_run;
+  if(lr){
+    const cls = !lr.ok ? 'fail' : (lr.claims>0 ? 'ok' : 'none');
+    const label = !lr.ok ? lr.result : (lr.claims>0 ? ('Claimed '+lr.claims) : 'Nothing to claim');
+    $('lastResult').innerHTML = '<span class="pill '+cls+'">'+label+'</span>';
+    $('lastWhen').textContent = fmtClock(lr.epoch) + ' (' + ago(lr.epoch) + ')';
+    const cds = (lr.cooldowns_hours||[]);
+    $('lastCds').innerHTML = cds.length ? cds.map(h=>'<span class="cd">'+h+'h</span>').join('') : '<span class="mut">—</span>';
+  }
+
+  // next run
+  const nr = data.next_run;
+  $('nextAt').textContent = nr ? fmtClock(nr.epoch) : '—';
+  $('source').textContent = (nr && nr.source) ? nr.source : '—';
+  $('stateTxt').textContent = ({sleeping:'Waiting',running:'Running now',unknown:'Unknown'})[data.state] || data.state;
+
+  // dot
+  const dot = $('dot');
+  dot.className = 'dot ' + (staleSec > 3*3600 ? 'stale' : (data.state==='running' ? 'run' : 'live'));
+
+  tick();
+}
+
+function tick(){
+  if(!data) return;
+  const nr = data.next_run;
+  const now = Math.floor(Date.now()/1000);
+  const running = data.state === 'running';
+  const stale = (now - (data.updated_at_epoch||0)) > 3*3600;
+
+  if(running){
+    $('heroLabel').textContent = 'Claimer is';
+    $('count').textContent = 'ACTIVE';
+    $('when').textContent = 'the AVD is in use right now';
+    setBanner('run', '🎮 Claimer is running — the emulator is busy.');
+    return;
+  }
+  if(!nr){
+    $('heroLabel').textContent = 'Next run';
+    $('count').textContent = stale ? 'OFFLINE' : '—';
+    $('when').textContent = stale ? 'daemon hasn\'t reported in >3h' : 'waiting for first cycle';
+    setBanner('', '');
+    return;
+  }
+  const left = nr.epoch - now;
+  $('heroLabel').textContent = 'Next run in';
+  $('count').textContent = fmtDur(left);
+  $('when').textContent = 'at ' + fmtClock(nr.epoch);
+  if(left <= 0){
+    setBanner('run', '⏳ Claimer starting any moment — the AVD is about to be used.');
+  }else if(left <= 300){
+    setBanner('soon', '⚠️ Less than 5 min — finish your match before the claimer takes over.');
+  }else{
+    setBanner('safe', '✅ Safe to play for ' + fmtDur(left) + '.');
+  }
+}
+
+function setBanner(cls, txt){
+  const b = $('banner');
+  b.className = 'banner' + (cls ? ' '+cls : '');
+  b.textContent = txt;
+}
+
+load();
+setInterval(load, 20000); // refetch data
+setInterval(tick, 1000);  // tick countdown
+</script>
+</body>
+</html>
