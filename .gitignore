@@ -9,3 +9,6 @@ logs/**
 !logs/.gitkeep
 
 .DS_Store
+
+# JetBrains IDE
+.idea/
