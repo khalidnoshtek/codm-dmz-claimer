@@ -327,6 +327,30 @@ class AdbDevice:
         self._run("shell", "settings", "put", "global", "stay_on_while_plugged_in", "7", check=False)
         self._run("shell", "settings", "put", "system", "screen_off_timeout", "1800000", check=False)
 
+    def disable_lock(self, old_credential: str | None = None) -> None:
+        """Remove any secure lock and disable the keyguard so cold-booted
+        cycles aren't blocked by a lock screen. This matters for more than
+        cosmetics: on this Android 15 AVD, while the keyguard is up the launcher
+        activities don't resolve, so `monkey`/`am start` of CODM fail outright
+        ('No activities found to run' / exit 252). The pattern lock has a habit
+        of reappearing across cold boots, so we clear it every cycle. Reliable
+        (a single command, unlike the flaky swipe-the-pattern gesture),
+        idempotent, and best-effort — never raises."""
+        import logging as _log
+        log = _log.getLogger(__name__)
+        try:
+            if old_credential:
+                # Removes the secure credential if one is set; harmless no-op
+                # (nonzero rc, swallowed) when there isn't one.
+                self._run("shell", "locksettings", "clear", "--old", str(old_credential), check=False)
+            # Disable the (now non-secure) keyguard entirely.
+            self._run("shell", "locksettings", "set-disabled", "true", check=False)
+            # Dismiss it if it's currently showing.
+            self.wake()
+            self._run("shell", "wm", "dismiss-keyguard", check=False)
+        except Exception as e:
+            log.warning("disable_lock failed (non-fatal): %s", e)
+
     def ensure_unlocked(self, lock_cfg: dict, attempts: int = 2) -> bool:
         """Wake the screen and, if the keyguard is up, draw the configured
         pattern to unlock. No-op if already unlocked. Returns True if the

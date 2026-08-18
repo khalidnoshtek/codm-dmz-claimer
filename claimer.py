@@ -82,13 +82,18 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     # don't come back frozen (idempotent — persists in the AVD's userdata).
     device.keep_awake()
 
-    # Lock screen: the AVD's secure lock was removed at the device level
-    # (locksettings clear) because SystemUI kept ANR-ing on the headless
-    # keyguard, freezing the framebuffer so the pattern unlock couldn't run.
-    # With no lock, boot lands straight on the launcher. The unlock path is
-    # kept behind lockscreen.enabled purely as a fallback if a lock ever
-    # reappears; it's a no-op when the screen is already unlocked.
+    # Lock screen: the AVD's pattern lock keeps reappearing across cold boots,
+    # and while the keyguard is up CODM's launcher activity won't resolve
+    # (monkey/am start fail with 'No activities found' / exit 252). So clear
+    # the lock every cycle via `locksettings` — reliable and idempotent, unlike
+    # the old swipe-the-pattern gesture. The credential is the pattern dots
+    # joined into digits (e.g. [5,3,6,9] -> "5369").
     lock_cfg = cfg.get("lockscreen") or {}
+    pattern = lock_cfg.get("pattern") or []
+    credential = "".join(str(d) for d in pattern) or None
+    device.disable_lock(old_credential=credential)
+
+    # Legacy pattern-drawing unlock, kept only if explicitly re-enabled.
     if lock_cfg.get("enabled"):
         if not device.ensure_unlocked(lock_cfg):
             log.error("Could not get past the lock screen — aborting cycle")
