@@ -1,11 +1,15 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1787061298,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
+    "epoch": 1787061769,
+    "ok": true,
+    "result": "CLAIMED 1 reward(s)",
+    "claims": 1,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1787061298
+  "next_run": {
+    "epoch": 1787068537,
+    "source": "config period -> capped at max_sleep_seconds"
+  },
+  "updated_at_epoch": 1787061769
 }
