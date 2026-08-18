@@ -1,8 +1,4 @@
 {
-  "state": "sleeping",
-  "next_run": {
-    "epoch": 1787044609,
-    "source": "config period -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1787037364
+  "state": "running",
+  "updated_at_epoch": 1787044611
 }
