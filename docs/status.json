@@ -1,15 +1,11 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1787296107,
+    "epoch": 1787303144,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "claims": 1,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1787303142,
-    "source": "config period -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1787296107
+  "updated_at_epoch": 1787303144
 }
