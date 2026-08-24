@@ -117,19 +117,26 @@ def record_run(summary: dict | None, repo_root: Path, retention_days: int = 7) -
         log.warning("record_run failed (non-fatal): %s", e)
 
 
-def read_remote_trigger(repo_root: Path) -> int:
-    """Fetch origin/main and return docs/trigger.json's `requested_at` epoch
-    (0 on any error / missing file). Uses git rather than the raw CDN URL so
-    the value is fresh (no ~5-min Fastly cache) and unauthenticated-rate-limit
-    free. Also advances the origin/main tracking ref, which lets the next
-    status push rebase cleanly onto any trigger commit."""
+def read_remote_control(repo_root: Path) -> dict:
+    """Fetch origin/main and return the dashboard control state from
+    docs/trigger.json: {"requested_at": <epoch>, "delay_until": <epoch>}
+    (0s on any error / missing file). `requested_at` is a manual "run now"
+    request; `delay_until` is a "push the next run to at least this time"
+    request. Uses git rather than the raw CDN URL so the values are fresh (no
+    ~5-min Fastly cache) and unauthenticated-rate-limit free. Also advances the
+    origin/main tracking ref, so the next status push rebases cleanly onto any
+    button commit."""
     try:
         f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
         if f.returncode != 0:
-            return 0
+            return {"requested_at": 0, "delay_until": 0}
         show = _run(["git", "show", "origin/main:docs/trigger.json"], repo_root, timeout=10)
         if show.returncode != 0:
-            return 0
-        return int(json.loads(show.stdout).get("requested_at", 0) or 0)
+            return {"requested_at": 0, "delay_until": 0}
+        d = json.loads(show.stdout)
+        return {
+            "requested_at": int(d.get("requested_at", 0) or 0),
+            "delay_until": int(d.get("delay_until", 0) or 0),
+        }
     except Exception:
-        return 0
+        return {"requested_at": 0, "delay_until": 0}

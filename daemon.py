@@ -22,7 +22,7 @@ from pathlib import Path
 
 from claimer import claim_once, load_config, setup_logging
 from lib.wake import schedule_wake, cancel_wakes
-from lib.status import publish_status, read_remote_trigger, record_run
+from lib.status import publish_status, read_remote_control, record_run
 
 ROOT = Path(__file__).resolve().parent
 
@@ -75,9 +75,11 @@ def loop_forever() -> int:
 
     consecutive_failures = 0
     prev_summary: dict | None = None
-    # Baseline the manual-trigger marker to whatever's already on the remote so
-    # we don't fire a stale trigger the moment the daemon (re)starts.
-    last_trigger = read_remote_trigger(ROOT)
+    # Baseline the trigger/delay markers to whatever's already on the remote so
+    # we don't act on a stale request the moment the daemon (re)starts.
+    _ctl0 = read_remote_control(ROOT)
+    last_trigger = _ctl0["requested_at"]
+    last_delay = _ctl0["delay_until"]
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
@@ -203,11 +205,25 @@ def loop_forever() -> int:
                 break
             if trigger_enabled and now - last_poll >= trigger_poll:
                 last_poll = now
-                rt = read_remote_trigger(ROOT)
-                if rt > last_trigger:
-                    last_trigger = rt
-                    log.info("Manual trigger received (requested_at=%d) — running a cycle now", rt)
+                ctl = read_remote_control(ROOT)
+                if ctl["requested_at"] > last_trigger:
+                    last_trigger = ctl["requested_at"]
+                    log.info("Manual trigger received (requested_at=%d) — running a cycle now",
+                             ctl["requested_at"])
                     break
+                # Delay ("snooze") request: push the wake time out to at least
+                # delay_until, so a scheduled run won't interrupt a game.
+                if ctl["delay_until"] > last_delay:
+                    last_delay = ctl["delay_until"]
+                    if ctl["delay_until"] > deadline:
+                        deadline = float(ctl["delay_until"])
+                        log.info("Delay requested — next run pushed to %s",
+                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(deadline)))
+                        if cfg.get("sleep_mac_between_cycles", True) and deadline - now > 600:
+                            schedule_wake(datetime.now() + timedelta(seconds=deadline - now - 30))
+                        # Republish so the dashboard countdown reflects the delay.
+                        _publish(cfg, "sleeping", summary=summary, wake_at=deadline,
+                                 source="manual delay")
             chunk = min(5.0, deadline - now)
             time.sleep(chunk)
 
