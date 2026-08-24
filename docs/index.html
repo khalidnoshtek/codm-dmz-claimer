@@ -58,6 +58,17 @@
   .trigmsg{font-size:12px;color:var(--muted);min-height:16px;text-align:center;}
   .trigmsg.ok{color:var(--accent);} .trigmsg.err{color:var(--danger);}
   .linkbtn{background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;font-family:var(--sans);}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .stat{text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 6px;}
+  .stat .num{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;}
+  .stat .num.ok{color:var(--accent);} .stat .num.fail{color:var(--danger);}
+  .stat .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;}
+  .runs{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+  .run{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;font-size:13px;}
+  .run .rtime{color:var(--muted);font-size:11px;min-width:104px;font-family:var(--mono);}
+  .run .rres{flex:1;font-weight:600;}
+  .run .rres.ok{color:var(--accent);} .run .rres.fail{color:var(--danger);}
+  .run .rcd{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
   footer{margin-top:22px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;}
   a{color:var(--accent2);text-decoration:none;}
   .mut{color:var(--muted);}
@@ -95,6 +106,21 @@
       <div class="row"><span class="k">Status</span><span class="v" id="stateTxt">—</span></div>
       <div class="row"><span class="k">Basis</span><span class="v mut" id="source" style="font-size:12px">—</span></div>
     </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <h3>Last 7 days</h3>
+    <div class="stats">
+      <div class="stat"><div class="num ok" id="wkClaims">–</div><div class="lbl">claims</div></div>
+      <div class="stat"><div class="num" id="wkRuns">–</div><div class="lbl">runs</div></div>
+      <div class="stat"><div class="num" id="wkNone">–</div><div class="lbl">nothing</div></div>
+      <div class="stat"><div class="num fail" id="wkFail">–</div><div class="lbl">failed</div></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:14px;">
+    <h3>Recent runs</h3>
+    <div class="runs" id="runs"><span class="mut">loading…</span></div>
   </div>
 
   <footer>
@@ -206,6 +232,32 @@ function setBanner(cls, txt){
   b.textContent = txt;
 }
 
+// ---- run history (docs/history.json) ----
+async function loadHistory(){
+  try{
+    const r = await fetch('history.json?t='+Date.now(), {cache:'no-store'});
+    const h = await r.json();
+    renderHistory(Array.isArray(h) ? h : []);
+  }catch(e){ /* keep prior */ }
+}
+function renderHistory(h){
+  const now = Math.floor(Date.now()/1000);
+  const wk = h.filter(r => (r.epoch||0) >= now - 7*86400);
+  const claims = wk.reduce((a,r)=>a+(r.claims||0),0);
+  const none = wk.filter(r=> r.ok && !(r.claims>0)).length;
+  const fail = wk.filter(r=> !r.ok).length;
+  $('wkClaims').textContent = claims;
+  $('wkRuns').textContent = wk.length;
+  $('wkNone').textContent = none;
+  $('wkFail').textContent = fail;
+  const rows = h.slice().sort((a,b)=>(b.epoch||0)-(a.epoch||0)).slice(0,60).map(r=>{
+    const cls = !r.ok ? 'fail' : (r.claims>0 ? 'ok' : '');
+    const cd = (r.cooldowns_hours||[]).length ? r.cooldowns_hours.map(x=>x+'h').join(' ') : '';
+    return `<div class="run"><span class="rtime">${fmtClock(r.epoch)}</span><span class="rres ${cls}">${r.result||''}</span><span class="rcd">${cd}</span></div>`;
+  }).join('');
+  $('runs').innerHTML = rows || '<span class="mut">no runs yet</span>';
+}
+
 // ---- manual trigger (writes docs/trigger.json via the GitHub API) ----
 const GH_OWNER='khalidnoshtek', GH_REPO='codm-dmz-claimer', GH_PATH='docs/trigger.json';
 const TOKEN_KEY='codm_gh_token', POLL_HINT=45;
@@ -255,8 +307,10 @@ $('runBtn').addEventListener('click', triggerRun);
 $('tokenBtn').addEventListener('click', setToken);
 
 load();
-setInterval(load, 20000); // refetch data
-setInterval(tick, 1000);  // tick countdown
+loadHistory();
+setInterval(load, 20000);        // refetch status
+setInterval(loadHistory, 60000); // refetch history
+setInterval(tick, 1000);         // tick countdown
 </script>
 </body>
 </html>

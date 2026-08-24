@@ -44,17 +44,19 @@ def publish_status(status: dict, repo_root: Path, push: bool = True) -> None:
     if not push:
         return
     try:
-        # Stage only status.json so we never sweep up unrelated working changes.
-        add = _run(["git", "add", "docs/status.json"], repo_root)
+        # Stage status.json + history.json (the two dashboard data files) so
+        # they ship in one commit. We never `git add -A`, to avoid sweeping up
+        # unrelated working changes.
+        add = _run(["git", "add", "docs/status.json", "docs/history.json"], repo_root)
         if add.returncode != 0:
-            log.warning("git add status.json failed: %s", add.stderr.strip())
+            log.warning("git add dashboard files failed: %s", add.stderr.strip())
             return
-        # Nothing staged (status unchanged) -> skip the commit quietly.
-        diff = _run(["git", "diff", "--cached", "--quiet", "docs/status.json"], repo_root)
+        # Nothing staged (unchanged) -> skip the commit quietly.
+        diff = _run(["git", "diff", "--cached", "--quiet"], repo_root)
         if diff.returncode == 0:
             return
         stamp = time.strftime("%Y-%m-%d %H:%M:%S")
-        commit = _run(["git", "commit", "-m", f"chore(status): {stamp}", "docs/status.json"], repo_root)
+        commit = _run(["git", "commit", "-m", f"chore(status): {stamp}"], repo_root)
         if commit.returncode != 0:
             log.warning("git commit status failed: %s", commit.stderr.strip())
             return
@@ -71,6 +73,48 @@ def publish_status(status: dict, repo_root: Path, push: bool = True) -> None:
                 log.warning("git push status failed after rebase: %s", retry.stderr.strip())
     except Exception as e:
         log.warning("publish_status push step failed: %s", e)
+
+
+def _result_line(summary: dict | None) -> tuple[bool, int, str]:
+    """(ok, claims, short result string) from a cycle summary."""
+    if not isinstance(summary, dict):
+        return False, 0, "FAILED (error)"
+    ok = bool(summary.get("ok"))
+    claims = summary.get("claims_attempted") or 0
+    if not ok:
+        return ok, claims, f"FAILED at {summary.get('aborted_at') or 'unknown'}"
+    return ok, claims, (f"CLAIMED {claims}" if claims else "nothing claimable")
+
+
+def record_run(summary: dict | None, repo_root: Path, retention_days: int = 7) -> None:
+    """Append this cycle to docs/history.json, pruning entries older than
+    retention_days. Keeps a rolling window the dashboard can total (claims/week)
+    and that you can skim before deciding to trigger a manual run. Best-effort
+    (write only — publish_status pushes it alongside status.json). Never raises."""
+    try:
+        docs = repo_root / "docs"
+        docs.mkdir(exist_ok=True)
+        path = docs / "history.json"
+        try:
+            hist = json.loads(path.read_text())
+            if not isinstance(hist, list):
+                hist = []
+        except Exception:
+            hist = []
+        ok, claims, result = _result_line(summary)
+        cds = sorted((summary or {}).get("cooldowns_seconds") or [])
+        hist.append({
+            "epoch": int(time.time()),
+            "ok": ok,
+            "result": result,
+            "claims": claims,
+            "cooldowns_hours": [round(s / 3600, 1) for s in cds],
+        })
+        cutoff = int(time.time()) - int(retention_days) * 86400
+        hist = [h for h in hist if int(h.get("epoch", 0)) >= cutoff]
+        path.write_text(json.dumps(hist, indent=2))
+    except Exception as e:
+        log.warning("record_run failed (non-fatal): %s", e)
 
 
 def read_remote_trigger(repo_root: Path) -> int:

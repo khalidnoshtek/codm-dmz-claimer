@@ -102,6 +102,11 @@ publish_status_push: true
 trigger_enabled: true
 trigger_poll_seconds: 45
 
+# Rolling run history (docs/history.json) for the dashboard: how many claims
+# per week, recent results, cooldowns. Runs older than this many days are
+# purged each cycle.
+history_retention_days: 7
+
 # --- Lock screen (pattern) --------------------------------------------------
 # The AVD boots to a pattern lock. Each cycle the daemon wakes the screen,
 # swipes up to reveal the pattern grid, then draws the pattern below before

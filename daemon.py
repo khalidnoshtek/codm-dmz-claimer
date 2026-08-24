@@ -22,7 +22,7 @@ from pathlib import Path
 
 from claimer import claim_once, load_config, setup_logging
 from lib.wake import schedule_wake, cancel_wakes
-from lib.status import publish_status, read_remote_trigger
+from lib.status import publish_status, read_remote_trigger, record_run
 
 ROOT = Path(__file__).resolve().parent
 
@@ -171,7 +171,9 @@ def loop_forever() -> int:
                  wait, source, jitter, backoff,
                  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(wake_at)))
 
-        # Publish last-run result + next-run time for the dashboard countdown.
+        # Append this run to the rolling history, then publish last-run result
+        # + next-run time for the dashboard countdown.
+        record_run(summary, ROOT, retention_days=int(cfg.get("history_retention_days", 7)))
         _publish(cfg, "sleeping", summary=summary, wake_at=wake_at, source=source)
         prev_summary = summary if isinstance(summary, dict) else prev_summary
 
