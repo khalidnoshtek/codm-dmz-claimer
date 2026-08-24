@@ -22,7 +22,7 @@ from pathlib import Path
 
 from claimer import claim_once, load_config, setup_logging
 from lib.wake import schedule_wake, cancel_wakes
-from lib.status import publish_status
+from lib.status import publish_status, read_remote_trigger
 
 ROOT = Path(__file__).resolve().parent
 
@@ -75,6 +75,9 @@ def loop_forever() -> int:
 
     consecutive_failures = 0
     prev_summary: dict | None = None
+    # Baseline the manual-trigger marker to whatever's already on the remote so
+    # we don't fire a stale trigger the moment the daemon (re)starts.
+    last_trigger = read_remote_trigger(ROOT)
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
@@ -185,11 +188,24 @@ def loop_forever() -> int:
         # wall-clock deadline rather than a counter — Python's time.sleep()
         # accumulates ~80ms of overhead per call, which over 1500+ iterations
         # of 5s chunks drifts the daemon ~130s late on a multi-hour wait.
+        # Poll the repo for a manual "run now" trigger from the dashboard button
+        # while we sleep. A newer trigger.json timestamp breaks the sleep and
+        # runs a cycle immediately.
+        trigger_enabled = bool(cfg.get("trigger_enabled", True))
+        trigger_poll = max(15.0, float(cfg.get("trigger_poll_seconds", 45)))
+        last_poll = 0.0
         deadline = time.time() + wait
         while not _stopping:
             now = time.time()
             if now >= deadline:
                 break
+            if trigger_enabled and now - last_poll >= trigger_poll:
+                last_poll = now
+                rt = read_remote_trigger(ROOT)
+                if rt > last_trigger:
+                    last_trigger = rt
+                    log.info("Manual trigger received (requested_at=%d) — running a cycle now", rt)
+                    break
             chunk = min(5.0, deadline - now)
             time.sleep(chunk)
 

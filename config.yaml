@@ -95,6 +95,13 @@ ocr_inter_attempt_seconds: 4.0
 publish_status: true
 publish_status_push: true
 
+# The dashboard's "Run now" button writes docs/trigger.json via the GitHub API.
+# While sleeping, the daemon git-fetch-polls that file every trigger_poll_seconds;
+# a newer timestamp breaks the sleep and runs a cycle immediately. Set
+# trigger_enabled: false to ignore the button.
+trigger_enabled: true
+trigger_poll_seconds: 45
+
 # --- Lock screen (pattern) --------------------------------------------------
 # The AVD boots to a pattern lock. Each cycle the daemon wakes the screen,
 # swipes up to reveal the pattern grid, then draws the pattern below before

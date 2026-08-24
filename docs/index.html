@@ -48,6 +48,16 @@
   .cds{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
   .cd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);
     border-radius:8px;padding:2px 8px;color:var(--txt);}
+  .trigger{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .btn{appearance:none;border:1px solid rgba(57,217,138,.4);background:rgba(57,217,138,.14);
+    color:var(--accent);font-weight:700;font-size:15px;padding:12px 22px;border-radius:12px;cursor:pointer;
+    font-family:var(--sans);transition:transform .06s ease,background .15s ease;min-width:200px;}
+  .btn:hover{background:rgba(57,217,138,.22);}
+  .btn:active{transform:scale(.97);}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .trigmsg{font-size:12px;color:var(--muted);min-height:16px;text-align:center;}
+  .trigmsg.ok{color:var(--accent);} .trigmsg.err{color:var(--danger);}
+  .linkbtn{background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;font-family:var(--sans);}
   footer{margin-top:22px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;}
   a{color:var(--accent2);text-decoration:none;}
   .mut{color:var(--muted);}
@@ -65,6 +75,11 @@
     <div class="count" id="count">--:--:--</div>
     <div class="when" id="when">&nbsp;</div>
     <div class="banner" id="banner"></div>
+    <div class="trigger">
+      <button id="runBtn" class="btn">▶ Run claimer now</button>
+      <div class="trigmsg" id="trigMsg"></div>
+      <button id="tokenBtn" class="linkbtn">set / change access token</button>
+    </div>
   </section>
 
   <div class="grid">
@@ -190,6 +205,54 @@ function setBanner(cls, txt){
   b.className = 'banner' + (cls ? ' '+cls : '');
   b.textContent = txt;
 }
+
+// ---- manual trigger (writes docs/trigger.json via the GitHub API) ----
+const GH_OWNER='khalidnoshtek', GH_REPO='codm-dmz-claimer', GH_PATH='docs/trigger.json';
+const TOKEN_KEY='codm_gh_token', POLL_HINT=45;
+
+function getToken(){ return (localStorage.getItem(TOKEN_KEY)||'').trim(); }
+function setToken(){
+  const t = prompt(
+    'Paste a GitHub fine-grained personal access token with "Contents: Read and write" on the codm-dmz-claimer repo.\n\n'+
+    'Create one at github.com/settings/tokens?type=beta (Repository access → this repo → Permissions → Contents: Read and write).\n\n'+
+    'It is stored ONLY in this browser (localStorage).',
+    getToken());
+  if(t!==null){ localStorage.setItem(TOKEN_KEY, t.trim()); msg(t.trim()?'Token saved.':'Token cleared.', t.trim()?'ok':''); }
+}
+function msg(t, cls){ const m=$('trigMsg'); m.textContent=t; m.className='trigmsg'+(cls?' '+cls:''); }
+
+let fastTimer=null;
+function fastPoll(){
+  const end = Date.now()+120000;
+  if(fastTimer) clearInterval(fastTimer);
+  fastTimer = setInterval(async ()=>{
+    await load();
+    if(data && data.state==='running') msg('🎮 Claimer is running now.','ok');
+    if(Date.now()>end){ clearInterval(fastTimer); fastTimer=null; $('runBtn').disabled=false; }
+  }, 5000);
+}
+
+async function triggerRun(){
+  let token = getToken();
+  if(!token){ setToken(); token=getToken(); if(!token){ msg('A token is required to trigger.','err'); return; } }
+  const btn=$('runBtn'); btn.disabled=true; msg('Sending trigger…');
+  const api=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
+  const headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  try{
+    const g=await fetch(api+'?ref=main&t='+Date.now(), {headers, cache:'no-store'});
+    if(g.status===401 || g.status===403){ msg('Token invalid/expired or lacks Contents:write — set a new one.','err'); btn.disabled=false; return; }
+    const gj=await g.json();
+    const now=Math.floor(Date.now()/1000);
+    const content=btoa(JSON.stringify({requested_at:now}, null, 2)+'\n');
+    const p=await fetch(api, {method:'PUT', headers,
+      body:JSON.stringify({message:'trigger: run now', content, sha:gj.sha, branch:'main'})});
+    if(p.ok){ msg('✅ Triggered — the daemon will start within ~'+POLL_HINT+'s.','ok'); fastPoll(); }
+    else{ const pj=await p.json().catch(()=>({})); msg('Trigger failed: '+(pj.message||('HTTP '+p.status)),'err'); btn.disabled=false; }
+  }catch(e){ msg('Network error sending trigger.','err'); btn.disabled=false; }
+}
+
+$('runBtn').addEventListener('click', triggerRun);
+$('tokenBtn').addEventListener('click', setToken);
 
 load();
 setInterval(load, 20000); // refetch data

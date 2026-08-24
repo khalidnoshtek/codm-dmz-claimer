@@ -60,6 +60,32 @@ def publish_status(status: dict, repo_root: Path, push: bool = True) -> None:
             return
         pushed = _run(["git", "push", "origin", "HEAD"], repo_root, timeout=60)
         if pushed.returncode != 0:
-            log.warning("git push status failed: %s", pushed.stderr.strip())
+            # Remote likely moved (e.g. a manual-trigger commit written via the
+            # GitHub API). Rebase our status commit on top and retry once.
+            # status.json and trigger.json are different files, so this never
+            # conflicts.
+            log.info("status push rejected; rebasing on origin/main and retrying")
+            _run(["git", "pull", "--rebase", "origin", "main"], repo_root, timeout=60)
+            retry = _run(["git", "push", "origin", "HEAD"], repo_root, timeout=60)
+            if retry.returncode != 0:
+                log.warning("git push status failed after rebase: %s", retry.stderr.strip())
     except Exception as e:
         log.warning("publish_status push step failed: %s", e)
+
+
+def read_remote_trigger(repo_root: Path) -> int:
+    """Fetch origin/main and return docs/trigger.json's `requested_at` epoch
+    (0 on any error / missing file). Uses git rather than the raw CDN URL so
+    the value is fresh (no ~5-min Fastly cache) and unauthenticated-rate-limit
+    free. Also advances the origin/main tracking ref, which lets the next
+    status push rebase cleanly onto any trigger commit."""
+    try:
+        f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
+        if f.returncode != 0:
+            return 0
+        show = _run(["git", "show", "origin/main:docs/trigger.json"], repo_root, timeout=10)
+        if show.returncode != 0:
+            return 0
+        return int(json.loads(show.stdout).get("requested_at", 0) or 0)
+    except Exception:
+        return 0
