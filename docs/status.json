@@ -1,11 +1,15 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1787676233,
+    "epoch": 1787676535,
     "ok": false,
     "result": "FAILED at dmz_lobby_check",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1787676233
+  "next_run": {
+    "epoch": 1787684793,
+    "source": "config period -> capped at max_sleep_seconds"
+  },
+  "updated_at_epoch": 1787676535
 }
