@@ -79,6 +79,8 @@ def _result_line(summary: dict | None) -> tuple[bool, int, str]:
     """(ok, claims, short result string) from a cycle summary."""
     if not isinstance(summary, dict):
         return False, 0, "FAILED (error)"
+    if summary.get("reason") == "needs_login":
+        return False, 0, "NEEDS LOGIN"
     ok = bool(summary.get("ok"))
     claims = summary.get("claims_attempted") or 0
     if not ok:

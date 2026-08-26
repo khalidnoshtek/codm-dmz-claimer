@@ -111,6 +111,7 @@ DEFAULT_STEPS: list[Step] = [
         template="01_dmz_lobby_marker.png",
         tap=False,                         # verify-only — the NEXT step is the tap target
         on_missing="abort",
+        timeout_override=45.0,             # DMZ lobby can be slow to load on first entry; 20s was too tight
         notes="Sanity check that we landed in the DMZ lobby (BLACK MARKET button visible). "
               "If this fails, we're on some unexpected screen and recovery via BACK keys "
               "alone isn't reliable — better to abort and let the next cycle cold-boot.",

@@ -55,6 +55,22 @@ def load_config() -> dict:
         return yaml.safe_load(f) or {}
 
 
+def _on_login_screen(device) -> bool:
+    """True if CODM is sitting on the Activision login form (password +
+    captcha). No automation can pass that, so we detect it via OCR and bail
+    out cleanly rather than pressing BACK (which quits the game)."""
+    try:
+        import cv2
+        import pytesseract
+        img = device.screencap()
+        txt = pytesseract.image_to_string(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)).upper()
+        keys = ("LOGIN NOW", "ACTIVISION ACCOUNT", "FORGOT YOUR PASSWORD",
+                "I'M NOT A ROBOT", "RECAPTCHA", "DON'T HAVE AN ACTIVISION")
+        return any(k in txt for k in keys)
+    except Exception:
+        return False
+
+
 def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     """Run the claim flow once. Returns a summary dict that's also written
     to logs/<timestamp>_summary.json."""
@@ -160,6 +176,31 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         if extra > 0 and cold_launch and not dry_run:
             log.info("Extra post-launch settle: %.0fs (login popup disabled)", extra)
             time.sleep(extra)
+
+    # If CODM has dropped its session it lands on the Activision login form
+    # (password + "I'm not a robot" captcha) — no automation can pass that.
+    # Report it clearly and stop, WITHOUT running the flow or pressing BACK
+    # (which would quit the game). Leaves CODM on the login screen so the user
+    # can sign in.
+    if not dry_run and _on_login_screen(device):
+        log.error("CODM is on the Activision login screen — a manual sign-in is required.")
+        log_status("NEEDS LOGIN — open the AVD and sign in to CODM (Activision account)")
+        if bool(cfg.get("shutdown_between_cycles", True)):
+            device.home()
+            time.sleep(2.0)
+            try:
+                subprocess.run(["adb", "-s", device.serial, "emu", "kill"],
+                               check=False, capture_output=True, timeout=10)
+            except Exception:
+                pass
+        stamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%SZ")
+        summary = {"ok": False, "reason": "needs_login", "stamp": stamp,
+                   "claims_attempted": 0, "steps_run": [], "steps_skipped": [],
+                   "aborted_at": "login", "abort_reason": "CODM logged out — manual sign-in required",
+                   "final_screenshot": None, "cooldowns_seconds": [], "min_cooldown_seconds": None}
+        (LOGS / f"{stamp}_summary.json").write_text(json.dumps(summary, indent=2))
+        log.info("Summary: %s", summary)
+        return summary
 
     result = run_flow(
         device,

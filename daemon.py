@@ -31,6 +31,8 @@ def _result_text(summary: dict | None) -> str:
     """One-line human-readable outcome, mirroring claimer's status.log line."""
     if not isinstance(summary, dict):
         return "unknown"
+    if summary.get("reason") == "needs_login":
+        return "NEEDS LOGIN"
     if not summary.get("ok"):
         return f"FAILED at {summary.get('aborted_at') or 'unknown'}"
     claimed = summary.get("claims_attempted") or 0
