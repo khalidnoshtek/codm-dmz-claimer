@@ -1,11 +1,4 @@
 {
   "state": "running",
-  "last_run": {
-    "epoch": 1787714419,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  "updated_at_epoch": 1787714419
+  "updated_at_epoch": 1787743141
 }
