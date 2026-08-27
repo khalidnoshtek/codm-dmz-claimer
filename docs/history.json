@@ -1,44 +1,5 @@
 [
   {
-    "epoch": 1787211696,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1787219736,
-    "ok": true,
-    "result": "CLAIMED 2",
-    "claims": 2,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1787227065,
-    "ok": true,
-    "result": "nothing claimable",
-    "claims": 0,
-    "cooldowns_hours": [
-      2.0,
-      2.9,
-      6.0
-    ]
-  },
-  {
-    "epoch": 1787235032,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1787242747,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1787249762,
     "ok": true,
     "result": "CLAIMED 1",
@@ -258,5 +219,15 @@
     "result": "CLAIMED 1",
     "claims": 1,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1787848876,
+    "ok": true,
+    "result": "nothing claimable",
+    "claims": 0,
+    "cooldowns_hours": [
+      2.3,
+      6.3
+    ]
   }
 ]
