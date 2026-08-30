@@ -1,11 +1,19 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1788072388,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
+    "epoch": 1788072666,
+    "ok": true,
+    "result": "nothing claimable",
     "claims": 0,
-    "cooldowns_hours": []
+    "cooldowns_hours": [
+      1.8,
+      3.8,
+      5.8
+    ]
   },
-  "updated_at_epoch": 1788072388
+  "next_run": {
+    "epoch": 1788079618,
+    "source": "OCR (min cooldown 6510s, found 3/3)"
+  },
+  "updated_at_epoch": 1788072666
 }
