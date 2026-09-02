@@ -184,5 +184,12 @@
     "result": "FAILED (error)",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1788368260,
+    "ok": false,
+    "result": "FAILED (error)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
