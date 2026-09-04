@@ -1,14 +1,4 @@
 {
   "state": "running",
-  "last_run": {
-    "epoch": 1788369865,
-    "ok": true,
-    "result": "nothing claimable",
-    "claims": 0,
-    "cooldowns_hours": [
-      3.9,
-      13.9
-    ]
-  },
-  "updated_at_epoch": 1788369865
+  "updated_at_epoch": 1788524152
 }
