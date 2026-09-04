@@ -1,16 +1,19 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1788549524,
+    "epoch": 1788549810,
     "ok": true,
     "result": "nothing claimable",
     "claims": 0,
     "cooldowns_hours": [
-      0.8,
-      1.8,
-      2.1,
-      3.1
+      1.0,
+      1.2,
+      2.2
     ]
   },
-  "updated_at_epoch": 1788549524
+  "next_run": {
+    "epoch": 1788553291,
+    "source": "OCR (min cooldown 3628s, found 3/3)"
+  },
+  "updated_at_epoch": 1788549810
 }
