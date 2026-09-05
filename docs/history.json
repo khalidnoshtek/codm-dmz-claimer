@@ -255,5 +255,14 @@
     "result": "CLAIMED 1",
     "claims": 1,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1788582800,
+    "ok": true,
+    "result": "CLAIMED 2",
+    "claims": 2,
+    "cooldowns_hours": [
+      45.1
+    ]
   }
 ]
