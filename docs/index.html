@@ -6,76 +6,100 @@
 <title>DMZ Claimer Status</title>
 <style>
   :root{
-    --bg:#0b0f14; --panel:#141b24; --panel2:#1b2531; --line:#243040;
-    --txt:#e7edf3; --muted:#8595a7; --accent:#39d98a; --accent2:#4aa8ff;
-    --warn:#ffb020; --danger:#ff5470; --shadow:0 6px 24px rgba(0,0,0,.35);
+    --bg:#0b0f14; --panel:#141b24; --panel2:#1b2531; --line:#26303d;
+    --txt:#eef3f8; --muted:#8a99ab;
+    --green:#39d98a; --amber:#ffb020; --blue:#4aa8ff; --red:#ff5470; --grey:#8a99ab;
+    --shadow:0 8px 30px rgba(0,0,0,.4);
     --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --accent:var(--green);
   }
   *{box-sizing:border-box}
-  body{margin:0;background:radial-gradient(1200px 600px at 50% -10%,#12202c,var(--bg)) fixed;
-    color:var(--txt);font-family:var(--sans);-webkit-font-smoothing:antialiased;
-    min-height:100vh;padding:20px 16px 40px;}
-  .wrap{max-width:680px;margin:0 auto;}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:6px 2px 20px;}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px;}
-  .dot{width:10px;height:10px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 4px rgba(255,255,255,.04);}
-  .dot.live{background:var(--accent);animation:pulse 1.6s infinite;}
-  .dot.run{background:var(--accent2);animation:pulse 1s infinite;}
-  .dot.stale{background:var(--danger);}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(57,217,138,.5)}70%{box-shadow:0 0 0 10px rgba(57,217,138,0)}100%{box-shadow:0 0 0 0 rgba(57,217,138,0)}}
+  html,body{overflow-x:hidden}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;min-height:100vh;padding:18px 14px 44px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 16px;}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:.2px;}
+  .dot{width:9px;height:9px;border-radius:50%;background:var(--grey);}
+  .dot.on{background:var(--accent);box-shadow:0 0 0 0 var(--accent);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
   .sub{color:var(--muted);font-size:12px;}
-  .hero{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
-    border-radius:18px;padding:26px 22px;box-shadow:var(--shadow);text-align:center;position:relative;overflow:hidden;}
-  .hero .label{color:var(--muted);text-transform:uppercase;letter-spacing:2px;font-size:12px;font-weight:600;}
-  .count{font-family:var(--mono);font-size:clamp(44px,14vw,84px);font-weight:700;line-height:1.05;margin:8px 0 4px;
-    letter-spacing:1px;font-variant-numeric:tabular-nums;}
-  .when{color:var(--muted);font-size:14px;}
-  .banner{margin-top:18px;border-radius:12px;padding:12px 14px;font-weight:600;font-size:14px;display:none;}
-  .banner.safe{display:block;background:rgba(57,217,138,.12);color:var(--accent);border:1px solid rgba(57,217,138,.3);}
-  .banner.soon{display:block;background:rgba(255,176,32,.12);color:var(--warn);border:1px solid rgba(255,176,32,.35);}
-  .banner.run{display:block;background:rgba(74,168,255,.12);color:var(--accent2);border:1px solid rgba(74,168,255,.35);}
-  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
-  @media(max-width:520px){.grid{grid-template-columns:1fr;}}
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;}
-  .card h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600;}
-  .row{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:5px 0;font-size:14px;}
-  .row .k{color:var(--muted);} .row .v{font-weight:600;text-align:right;}
-  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
-  .pill.ok{background:rgba(57,217,138,.15);color:var(--accent);}
-  .pill.none{background:rgba(133,149,167,.18);color:var(--muted);}
-  .pill.fail{background:rgba(255,84,112,.15);color:var(--danger);}
-  .cds{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;}
-  .cd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);
-    border-radius:8px;padding:2px 8px;color:var(--txt);}
-  .trigger{margin-top:18px;display:flex;flex-direction:column;align-items:center;gap:8px;}
-  .btn{appearance:none;border:1px solid rgba(57,217,138,.4);background:rgba(57,217,138,.14);
-    color:var(--accent);font-weight:700;font-size:15px;padding:12px 22px;border-radius:12px;cursor:pointer;
-    font-family:var(--sans);transition:transform .06s ease,background .15s ease;min-width:200px;}
-  .btn:hover{background:rgba(57,217,138,.22);}
+
+  /* hero: accent driven by state class */
+  .hero{position:relative;border-radius:20px;padding:26px 20px;text-align:center;overflow:hidden;
+    background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);box-shadow:var(--shadow);}
+  .hero::before{content:"";position:absolute;inset:0;opacity:.14;pointer-events:none;
+    background:radial-gradient(120% 120% at 50% -20%,var(--accent),transparent 60%);}
+  .hero.state-green{--accent:var(--green)} .hero.state-amber{--accent:var(--amber)}
+  .hero.state-blue{--accent:var(--blue)} .hero.state-red{--accent:var(--red)} .hero.state-grey{--accent:var(--grey)}
+  .hero .emoji{font-size:34px;line-height:1;}
+  .status{font-size:26px;font-weight:800;letter-spacing:.3px;margin:8px 0 2px;color:var(--accent);}
+  .statusSub{color:var(--muted);font-size:13px;margin-bottom:14px;}
+  .count{font-family:var(--mono);font-size:clamp(40px,13vw,72px);font-weight:700;line-height:1;
+    font-variant-numeric:tabular-nums;color:var(--txt);}
+  .countLbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:2px;margin-top:8px;}
+  .at{color:var(--muted);font-size:13px;margin-top:6px;}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px;margin-top:14px;}
+  .card h3{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;}
+
+  .btn{appearance:none;border:1px solid transparent;border-radius:12px;cursor:pointer;font-family:var(--sans);
+    font-weight:700;transition:transform .05s ease,filter .15s ease;}
   .btn:active{transform:scale(.97);}
-  .btn:disabled{opacity:.5;cursor:not-allowed;}
-  .trigmsg{font-size:12px;color:var(--muted);min-height:16px;text-align:center;}
-  .trigmsg.ok{color:var(--accent);} .trigmsg.err{color:var(--danger);}
-  .linkbtn{background:none;border:none;color:var(--accent2);font-size:11px;cursor:pointer;text-decoration:underline;padding:0;font-family:var(--sans);}
-  .delayrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
-  .btn.small{min-width:0;font-size:13px;padding:8px 14px;border-color:rgba(74,168,255,.4);background:rgba(74,168,255,.12);color:var(--accent2);}
-  .btn.small:hover{background:rgba(74,168,255,.2);}
-  .delaylbl{font-size:11px;color:var(--muted);}
+  .btn:disabled{opacity:.4;cursor:not-allowed;}
+  .btn-run{width:100%;padding:15px;font-size:16px;background:var(--green);color:#04140c;border-color:var(--green);}
+  .btn-run:hover:not(:disabled){filter:brightness(1.08);}
+  .reslabel{color:var(--muted);font-size:12px;margin:14px 0 8px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;}
+  .chip{flex:1 1 auto;min-width:64px;padding:11px 8px;font-size:14px;border-radius:11px;text-align:center;
+    background:var(--panel2);border:1px solid var(--line);color:var(--txt);cursor:pointer;font-weight:600;}
+  .chip:active{transform:scale(.96);}
+  .chip.pre{color:var(--blue);border-color:rgba(74,168,255,.35);}
+  .chip.post{color:var(--amber);border-color:rgba(255,176,32,.35);}
+  .chip.first{flex-basis:100%;color:var(--green);border-color:rgba(57,217,138,.35);background:rgba(57,217,138,.08);margin-top:2px;}
+  .chip:disabled{opacity:.4;cursor:not-allowed;}
+  .msg{font-size:12.5px;margin-top:12px;min-height:16px;text-align:center;color:var(--muted);}
+  .msg.ok{color:var(--green)} .msg.err{color:var(--red)} .msg.warn{color:var(--amber)}
+
+  .tok{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;}
+  .tokrow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;}
+  .tokset{color:var(--green);font-weight:600;}
+  .tokunset{color:var(--amber);font-weight:600;}
+  .link{background:none;border:none;color:var(--blue);cursor:pointer;text-decoration:underline;font-size:12px;padding:0;font-family:var(--sans);}
+  .tokform{margin-top:10px;display:none;gap:8px;flex-direction:column;}
+  .tokform.show{display:flex;}
+  .tokform input{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--txt);
+    padding:11px;font-size:14px;font-family:var(--mono);width:100%;}
+  .tokform .row{display:flex;gap:8px;}
+  .btn-save{flex:1;padding:11px;background:var(--blue);color:#031525;border-color:var(--blue);}
+  .btn-ghost{flex:1;padding:11px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);}
+  .hint{color:var(--muted);font-size:11.5px;line-height:1.5;}
+
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-  .stat{text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px 6px;}
-  .stat .num{font-family:var(--mono);font-size:26px;font-weight:700;line-height:1;}
-  .stat .num.ok{color:var(--accent);} .stat .num.fail{color:var(--danger);}
-  .stat .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;}
-  .runs{max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
-  .run{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;font-size:13px;}
-  .run .rtime{color:var(--muted);font-size:11px;min-width:104px;font-family:var(--mono);}
-  .run .rres{flex:1;font-weight:600;}
-  .run .rres.ok{color:var(--accent);} .run .rres.fail{color:var(--danger);}
-  .run .rcd{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap;}
-  footer{margin-top:22px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7;}
-  a{color:var(--accent2);text-decoration:none;}
-  .mut{color:var(--muted);}
+  .stat{text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 4px;}
+  .stat .n{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1;}
+  .stat.claims .n{color:var(--green)} .stat.fail .n{color:var(--red)}
+  .stat .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;}
+
+  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px;}
+  .kv .k{color:var(--muted)} .kv .v{font-weight:600;text-align:right}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+  .pill.ok{background:rgba(57,217,138,.16);color:var(--green)}
+  .pill.none{background:rgba(138,153,171,.18);color:var(--muted)}
+  .pill.fail{background:rgba(255,84,112,.16);color:var(--red)}
+  .pill.login{background:rgba(255,176,32,.16);color:var(--amber)}
+  .cds{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .cd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px 8px}
+
+  .runs{max-height:290px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
+  .run{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;font-size:13px;}
+  .run .t{color:var(--muted);font-size:11px;min-width:100px;font-family:var(--mono)}
+  .run .r{flex:1;font-weight:600}
+  .run .r.ok{color:var(--green)} .run .r.fail{color:var(--red)} .run .r.login{color:var(--amber)}
+  .run .c{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
+  footer{margin-top:20px;text-align:center;color:var(--muted);font-size:11.5px;line-height:1.7}
+  .mut{color:var(--muted)}
 </style>
 </head>
 <body>
@@ -85,268 +109,242 @@
     <div class="sub" id="updated">loading…</div>
   </header>
 
-  <section class="hero">
-    <div class="label" id="heroLabel">Next run in</div>
+  <section class="hero state-grey" id="hero">
+    <div class="emoji" id="emoji">⏳</div>
+    <div class="status" id="status">Loading…</div>
+    <div class="statusSub" id="statusSub">&nbsp;</div>
     <div class="count" id="count">--:--:--</div>
-    <div class="when" id="when">&nbsp;</div>
-    <div class="banner" id="banner"></div>
-    <div class="trigger">
-      <button id="runBtn" class="btn">▶ Run claimer now</button>
-      <div class="delaylbl">or delay the next run:</div>
-      <div class="delayrow">
-        <button class="btn small" data-delay="1800">+30 min</button>
-        <button class="btn small" data-delay="3600">+1 h</button>
-        <button class="btn small" data-delay="7200">+2 h</button>
-      </div>
-      <div class="trigmsg" id="trigMsg"></div>
-      <button id="tokenBtn" class="linkbtn">set / change access token</button>
-    </div>
+    <div class="countLbl" id="countLbl">next run in</div>
+    <div class="at" id="at">&nbsp;</div>
   </section>
 
-  <div class="grid">
-    <div class="card">
-      <h3>Last run</h3>
-      <div class="row"><span class="k">Result</span><span class="v" id="lastResult">—</span></div>
-      <div class="row"><span class="k">When</span><span class="v" id="lastWhen">—</span></div>
-      <div class="row"><span class="k">Cooldowns</span><span class="v"><span class="cds" id="lastCds">—</span></span></div>
+  <div class="card">
+    <h3>Controls</h3>
+    <button id="runBtn" class="btn btn-run">▶ Run claimer now</button>
+    <div class="reslabel">Reschedule the next run</div>
+    <div class="chips">
+      <button class="chip pre"  data-adj="-3600">−1h</button>
+      <button class="chip pre"  data-adj="-1800">−30m</button>
+      <button class="chip post" data-adj="1800">+30m</button>
+      <button class="chip post" data-adj="3600">+1h</button>
+      <button class="chip post" data-adj="7200">+2h</button>
+      <button class="chip first" id="firstBtn">⏱ Run when first reward is ready</button>
     </div>
-    <div class="card">
-      <h3>Next run</h3>
-      <div class="row"><span class="k">At</span><span class="v" id="nextAt">—</span></div>
-      <div class="row"><span class="k">Status</span><span class="v" id="stateTxt">—</span></div>
-      <div class="row"><span class="k">Basis</span><span class="v mut" id="source" style="font-size:12px">—</span></div>
+    <div class="msg" id="msg"></div>
+
+    <div class="tok">
+      <div class="tokrow">
+        <span id="tokState" class="tokunset">🔑 No access token on this device</span>
+        <button class="link" id="tokToggle">set token</button>
+      </div>
+      <div class="tokform" id="tokForm">
+        <input id="tokInput" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false">
+        <div class="row">
+          <button class="btn btn-save" id="tokSave">Save</button>
+          <button class="btn btn-ghost" id="tokClear">Clear</button>
+        </div>
+        <div class="hint">Buttons write a request to your repo, which the Mac daemon reads. Each device
+          (phone, laptop) needs the token entered once — it's saved only in this browser.
+          Create one: GitHub → Settings → Developer settings → Fine-grained tokens → this repo →
+          <b>Contents: Read and write</b>.</div>
+      </div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px;">
+  <div class="card">
     <h3>Last 7 days</h3>
     <div class="stats">
-      <div class="stat"><div class="num ok" id="wkClaims">–</div><div class="lbl">claims</div></div>
-      <div class="stat"><div class="num" id="wkRuns">–</div><div class="lbl">runs</div></div>
-      <div class="stat"><div class="num" id="wkNone">–</div><div class="lbl">nothing</div></div>
-      <div class="stat"><div class="num fail" id="wkFail">–</div><div class="lbl">failed</div></div>
+      <div class="stat claims"><div class="n" id="wkClaims">–</div><div class="l">claims</div></div>
+      <div class="stat"><div class="n" id="wkRuns">–</div><div class="l">runs</div></div>
+      <div class="stat"><div class="n" id="wkNone">–</div><div class="l">nothing</div></div>
+      <div class="stat fail"><div class="n" id="wkFail">–</div><div class="l">failed</div></div>
     </div>
   </div>
 
-  <div class="card" style="margin-top:14px;">
+  <div class="card">
+    <h3>Last run</h3>
+    <div class="kv"><span class="k">Result</span><span class="v" id="lrResult">—</span></div>
+    <div class="kv"><span class="k">When</span><span class="v" id="lrWhen">—</span></div>
+    <div class="kv"><span class="k">Cooldowns</span><span class="v"><span class="cds" id="lrCds">—</span></span></div>
+  </div>
+
+  <div class="card">
     <h3>Recent runs</h3>
     <div class="runs" id="runs"><span class="mut">loading…</span></div>
   </div>
 
   <footer>
-    Auto-refreshes every 20s · countdown is when the daemon next drives the AVD.<br>
-    <span class="mut">If you're in a match, wrap up before the countdown hits zero.</span>
+    Auto-refreshes every 20s · countdown = when the daemon next drives the AVD.<br>
+    <span class="mut">Reschedule or delay before the countdown hits zero to avoid getting kicked mid-match.</span>
   </footer>
 </div>
 
 <script>
-const $ = id => document.getElementById(id);
-const pad = n => String(n).padStart(2,'0');
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const nowSec=()=>Math.floor(Date.now()/1000);
+function fmtDur(s){s=Math.max(0,Math.floor(s));return pad(s/3600|0)+':'+pad((s%3600)/60|0)+':'+pad(s%60);}
+function fmtClock(e){const d=new Date(e*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+d.toLocaleDateString([],{month:'short',day:'numeric'});}
+function ago(e){const s=nowSec()-e;if(s<60)return s+'s ago';if(s<3600)return (s/60|0)+'m ago';if(s<86400)return (s/3600|0)+'h '+((s%3600)/60|0)+'m ago';return (s/86400|0)+'d ago';}
 
-function fmtDur(sec){
-  sec = Math.max(0, Math.floor(sec));
-  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60), s = sec%60;
-  return pad(h)+':'+pad(m)+':'+pad(s);
-}
-function fmtClock(epoch){
-  const d = new Date(epoch*1000);
-  return d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) +
-         ' · ' + d.toLocaleDateString([], {month:'short', day:'numeric'});
-}
-function ago(epoch){
-  const s = Math.floor(Date.now()/1000) - epoch;
-  if (s < 60) return s+'s ago';
-  if (s < 3600) return Math.floor(s/60)+'m ago';
-  if (s < 86400) return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m ago';
-  return Math.floor(s/86400)+'d ago';
-}
-
-let data = null;
-
-async function load(){
-  try{
-    const r = await fetch('status.json?t=' + Date.now(), {cache:'no-store'});
-    data = await r.json();
-    render();
-  }catch(e){ /* keep last data; tick() will show staleness */ }
-}
-
-function render(){
-  if(!data) return;
-  // updated / staleness
-  const upd = data.updated_at_epoch || 0;
-  const staleSec = Math.floor(Date.now()/1000) - upd;
-  $('updated').textContent = upd ? ('updated ' + ago(upd)) : 'no data yet';
-
-  // last run
-  const lr = data.last_run;
-  if(lr){
-    const cls = !lr.ok ? 'fail' : (lr.claims>0 ? 'ok' : 'none');
-    const label = !lr.ok ? lr.result : (lr.claims>0 ? ('Claimed '+lr.claims) : 'Nothing to claim');
-    $('lastResult').innerHTML = '<span class="pill '+cls+'">'+label+'</span>';
-    $('lastWhen').textContent = fmtClock(lr.epoch) + ' (' + ago(lr.epoch) + ')';
-    const cds = (lr.cooldowns_hours||[]);
-    $('lastCds').innerHTML = cds.length ? cds.map(h=>'<span class="cd">'+h+'h</span>').join('') : '<span class="mut">—</span>';
-  }
-
-  // next run
-  const nr = data.next_run;
-  $('nextAt').textContent = nr ? fmtClock(nr.epoch) : '—';
-  $('source').textContent = (nr && nr.source) ? nr.source : '—';
-  $('stateTxt').textContent = ({sleeping:'Waiting',running:'Running now',unknown:'Unknown'})[data.state] || data.state;
-
-  // dot
-  const dot = $('dot');
-  dot.className = 'dot ' + (staleSec > 3*3600 ? 'stale' : (data.state==='running' ? 'run' : 'live'));
-
-  tick();
-}
-
-function tick(){
-  if(!data) return;
-  const nr = data.next_run;
-  const now = Math.floor(Date.now()/1000);
-  const running = data.state === 'running';
-  const stale = (now - (data.updated_at_epoch||0)) > 3*3600;
-
-  if(running){
-    $('heroLabel').textContent = 'Claimer is';
-    $('count').textContent = 'ACTIVE';
-    $('when').textContent = 'the AVD is in use right now';
-    setBanner('run', '🎮 Claimer is running — the emulator is busy.');
-    return;
-  }
-  if(!nr){
-    $('heroLabel').textContent = 'Next run';
-    $('count').textContent = stale ? 'OFFLINE' : '—';
-    $('when').textContent = stale ? 'daemon hasn\'t reported in >3h' : 'waiting for first cycle';
-    setBanner('', '');
-    return;
-  }
-  const left = nr.epoch - now;
-  $('heroLabel').textContent = 'Next run in';
-  $('count').textContent = fmtDur(left);
-  $('when').textContent = 'at ' + fmtClock(nr.epoch);
-  if(left <= 0){
-    setBanner('run', '⏳ Claimer starting any moment — the AVD is about to be used.');
-  }else if(left <= 300){
-    setBanner('soon', '⚠️ Less than 5 min — finish your match before the claimer takes over.');
-  }else{
-    setBanner('safe', '✅ Safe to play for ' + fmtDur(left) + '.');
-  }
-}
-
-function setBanner(cls, txt){
-  const b = $('banner');
-  b.className = 'banner' + (cls ? ' '+cls : '');
-  b.textContent = txt;
-}
-
-// ---- run history (docs/history.json) ----
-async function loadHistory(){
-  try{
-    const r = await fetch('history.json?t='+Date.now(), {cache:'no-store'});
-    const h = await r.json();
-    renderHistory(Array.isArray(h) ? h : []);
-  }catch(e){ /* keep prior */ }
-}
-function renderHistory(h){
-  const now = Math.floor(Date.now()/1000);
-  const wk = h.filter(r => (r.epoch||0) >= now - 7*86400);
-  const claims = wk.reduce((a,r)=>a+(r.claims||0),0);
-  const none = wk.filter(r=> r.ok && !(r.claims>0)).length;
-  const fail = wk.filter(r=> !r.ok).length;
-  $('wkClaims').textContent = claims;
-  $('wkRuns').textContent = wk.length;
-  $('wkNone').textContent = none;
-  $('wkFail').textContent = fail;
-  const rows = h.slice().sort((a,b)=>(b.epoch||0)-(a.epoch||0)).slice(0,60).map(r=>{
-    const cls = !r.ok ? 'fail' : (r.claims>0 ? 'ok' : '');
-    const cd = (r.cooldowns_hours||[]).length ? r.cooldowns_hours.map(x=>x+'h').join(' ') : '';
-    return `<div class="run"><span class="rtime">${fmtClock(r.epoch)}</span><span class="rres ${cls}">${r.result||''}</span><span class="rcd">${cd}</span></div>`;
-  }).join('');
-  $('runs').innerHTML = rows || '<span class="mut">no runs yet</span>';
-}
-
-// ---- manual trigger (writes docs/trigger.json via the GitHub API) ----
 const GH_OWNER='khalidnoshtek', GH_REPO='codm-dmz-claimer', GH_PATH='docs/trigger.json';
-const TOKEN_KEY='codm_gh_token', POLL_HINT=45;
-
-function getToken(){ return (localStorage.getItem(TOKEN_KEY)||'').trim(); }
-function setToken(){
-  const t = prompt(
-    'Paste a GitHub fine-grained personal access token with "Contents: Read and write" on the codm-dmz-claimer repo.\n\n'+
-    'Create one at github.com/settings/tokens?type=beta (Repository access → this repo → Permissions → Contents: Read and write).\n\n'+
-    'It is stored ONLY in this browser (localStorage).',
-    getToken());
-  if(t!==null){ localStorage.setItem(TOKEN_KEY, t.trim()); msg(t.trim()?'Token saved.':'Token cleared.', t.trim()?'ok':''); }
-}
-function msg(t, cls){ const m=$('trigMsg'); m.textContent=t; m.className='trigmsg'+(cls?' '+cls:''); }
-
-let fastTimer=null;
-function fastPoll(){
-  const end = Date.now()+120000;
-  if(fastTimer) clearInterval(fastTimer);
-  fastTimer = setInterval(async ()=>{
-    await load();
-    if(data && data.state==='running') msg('🎮 Claimer is running now.','ok');
-    if(Date.now()>end){ clearInterval(fastTimer); fastTimer=null; $('runBtn').disabled=false; }
-  }, 5000);
-}
-
 const GH_API=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
-let pendingDelayUntil = 0;
+const TOKEN_KEY='codm_gh_token';
+let data=null, hist=[], pendingRunAt=0;
 
-// Read-modify-write docs/trigger.json so requested_at and delay_until don't
-// clobber each other.
+/* ---------- token ---------- */
+function getToken(){return (localStorage.getItem(TOKEN_KEY)||'').trim();}
+function renderToken(){
+  const has=!!getToken();
+  $('tokState').textContent = has ? '🔑 Access token set on this device' : '🔑 No access token on this device';
+  $('tokState').className = has ? 'tokset' : 'tokunset';
+  $('tokToggle').textContent = has ? 'change' : 'set token';
+  setControlsEnabled(has);
+}
+function setControlsEnabled(on){
+  $('runBtn').disabled=!on; $('firstBtn').disabled=!on;
+  document.querySelectorAll('.chip[data-adj]').forEach(c=>c.disabled=!on);
+}
+$('tokToggle').addEventListener('click',()=>{ $('tokForm').classList.toggle('show'); $('tokInput').value=getToken(); });
+$('tokSave').addEventListener('click',()=>{ localStorage.setItem(TOKEN_KEY,$('tokInput').value.trim()); $('tokForm').classList.remove('show'); renderToken(); msg(getToken()?'Token saved on this device.':'Token cleared.', getToken()?'ok':''); });
+$('tokClear').addEventListener('click',()=>{ localStorage.removeItem(TOKEN_KEY); $('tokInput').value=''; renderToken(); msg('Token cleared.',''); });
+function msg(t,c){const m=$('msg');m.textContent=t;m.className='msg'+(c?' '+c:'');}
+
+/* ---------- write control file ---------- */
 async function writeControl(patch, okMsg){
-  let token = getToken();
-  if(!token){ setToken(); token=getToken(); if(!token){ msg('A token is required.','err'); return false; } }
-  const headers={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  const token=getToken();
+  if(!token){ $('tokForm').classList.add('show'); msg('Enter an access token first.','warn'); return false; }
+  const h={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
   msg('Sending…');
   try{
-    const g=await fetch(GH_API+'?ref=main&t='+Date.now(), {headers, cache:'no-store'});
-    if(g.status===401 || g.status===403){ msg('Token invalid/expired or lacks Contents:write — set a new one.','err'); return false; }
+    const g=await fetch(GH_API+'?ref=main&t='+Date.now(),{headers:h,cache:'no-store'});
+    if(g.status===401||g.status===403){ msg('Token invalid/expired or missing Contents:write.','err'); return false; }
     const gj=await g.json();
-    let cur={}; try{ cur=JSON.parse(atob(gj.content||'')); }catch(e){}
-    const merged=Object.assign({requested_at:0, delay_until:0}, cur, patch);
-    const content=btoa(JSON.stringify(merged, null, 2)+'\n');
-    const p=await fetch(GH_API, {method:'PUT', headers,
-      body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: delay'), content, sha:gj.sha, branch:'main'})});
+    let cur={}; try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
+    const merged=Object.assign({requested_at:0,delay_until:0,run_at:0},cur,patch);
+    const body={message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(merged,null,2)+'\n'),sha:gj.sha,branch:'main'};
+    const p=await fetch(GH_API,{method:'PUT',headers:h,body:JSON.stringify(body)});
     if(p.ok){ msg(okMsg,'ok'); return true; }
     const pj=await p.json().catch(()=>({})); msg('Failed: '+(pj.message||('HTTP '+p.status)),'err'); return false;
   }catch(e){ msg('Network error.','err'); return false; }
 }
 
-async function triggerRun(){
-  const btn=$('runBtn'); btn.disabled=true;
-  const ok=await writeControl({requested_at:Math.floor(Date.now()/1000)},
-    '✅ Triggered — the daemon will start within ~'+POLL_HINT+'s.');
-  if(ok) fastPoll(); else btn.disabled=false;
+/* ---------- actions ---------- */
+let fastTimer=null;
+function fastPoll(){const end=Date.now()+120000;if(fastTimer)clearInterval(fastTimer);
+  fastTimer=setInterval(async()=>{await load();if(Date.now()>end){clearInterval(fastTimer);fastTimer=null;$('runBtn').disabled=!getToken();}},4000);}
+
+async function runNow(){ $('runBtn').disabled=true;
+  const ok=await writeControl({requested_at:nowSec()},'✅ Run requested — starts within ~45s.');
+  if(ok){pendingRunAt=0;fastPoll();} else $('runBtn').disabled=!getToken(); }
+
+function currentNext(){ return Math.max(pendingRunAt||0, (data&&data.next_run?data.next_run.epoch:0)||0, nowSec()); }
+async function adjust(sec){
+  let base = pendingRunAt || (data&&data.next_run?data.next_run.epoch:0) || nowSec();
+  let target = base + sec;
+  const min = nowSec()+60;
+  if(target<min) target=min;
+  pendingRunAt=target;
+  const verb = sec<0 ? 'Moved earlier' : 'Delayed';
+  const ok=await writeControl({run_at:target}, `⏱ ${verb} → next run ~${fmtClock(target)} (applies within ~45s).`);
+  if(ok) fastPoll(); else pendingRunAt=0;
+}
+async function runAtFirstReward(){
+  if(!data||!data.last_run||!(data.last_run.cooldowns_hours||[]).length){ msg('No cooldown data yet — try Run now.','warn'); return; }
+  const earliest = data.last_run.epoch + Math.min(...data.last_run.cooldowns_hours)*3600;
+  if(earliest<=nowSec()+30){ runNow(); return; }
+  pendingRunAt=earliest;
+  const ok=await writeControl({run_at:Math.floor(earliest)}, `⏱ Next run set to first reward ~${fmtClock(earliest)}.`);
+  if(ok) fastPoll(); else pendingRunAt=0;
+}
+$('runBtn').addEventListener('click',runNow);
+$('firstBtn').addEventListener('click',runAtFirstReward);
+document.querySelectorAll('.chip[data-adj]').forEach(c=>c.addEventListener('click',()=>adjust(parseInt(c.dataset.adj,10))));
+
+/* ---------- render ---------- */
+function setHero(cls,accentDot,emoji,status,sub){
+  $('hero').className='hero '+cls;
+  $('dot').className='dot'+(accentDot?' on':'');
+  $('emoji').textContent=emoji; $('status').textContent=status; $('statusSub').textContent=sub;
+}
+function resultClass(r){ if(!r)return''; r=r.toUpperCase(); if(r.includes('NEEDS LOGIN'))return'login'; if(r.startsWith('CLAIMED'))return'ok'; if(r.startsWith('FAILED'))return'fail'; return'none'; }
+
+function render(){
+  if(!data) return;
+  const upd=data.updated_at_epoch||0;
+  const stale=nowSec()-upd>3*3600;
+  $('updated').textContent= upd? 'updated '+ago(upd):'no data yet';
+
+  const lr=data.last_run;
+  if(lr){
+    const cls=resultClass(lr.result);
+    const label=lr.result||'—';
+    $('lrResult').innerHTML='<span class="pill '+(cls||'none')+'">'+label+'</span>';
+    $('lrWhen').textContent=fmtClock(lr.epoch)+' ('+ago(lr.epoch)+')';
+    const cds=lr.cooldowns_hours||[];
+    $('lrCds').innerHTML=cds.length?cds.map(h=>'<span class="cd">'+h+'h</span>').join(''):'<span class="mut">—</span>';
+  }
+  tick();
 }
 
-async function delayBy(sec){
-  const now=Math.floor(Date.now()/1000);
-  // stack repeated presses even before the daemon re-publishes the new time
-  const base=Math.max(pendingDelayUntil, (data&&data.next_run?data.next_run.epoch:0), now);
-  const until=base+sec;
-  pendingDelayUntil=until;
-  const ok=await writeControl({delay_until:until},
-    '💤 Next run delayed to ~'+fmtClock(until)+' (applies within ~'+POLL_HINT+'s).');
-  if(!ok) pendingDelayUntil=Math.max(0, until-sec);
+function tick(){
+  if(!data) return;
+  const now=nowSec();
+  const nr=data.next_run;
+  const stale=now-(data.updated_at_epoch||0)>3*3600;
+  const loginNeeded = data.last_run && resultClass(data.last_run.result)==='login';
+
+  // clear pendingRunAt once the daemon's published next_run has caught up (within 90s)
+  if(pendingRunAt && nr && Math.abs(nr.epoch-pendingRunAt)<90) pendingRunAt=0;
+
+  if(data.state==='running'){
+    setHero('state-blue',true,'⚙️','Running now','The claimer is using the AVD — hold off playing');
+    $('count').textContent='•••'; $('countLbl').textContent='in progress'; $('at').textContent='';
+    return;
+  }
+  if(loginNeeded){
+    setHero('state-red',false,'🔑','Sign-in needed','Open CODM on the Mac and log into your Activision account');
+    $('count').textContent='⚠'; $('countLbl').textContent='action required'; $('at').textContent='';
+    return;
+  }
+  if(stale || !nr){
+    setHero('state-grey',false,'⚠️', stale?'Daemon offline?':'Waiting', stale?'no update in over 3h':'waiting for first cycle');
+    $('count').textContent= stale?'—':'…'; $('countLbl').textContent='next run'; $('at').textContent='';
+    return;
+  }
+  const left=nr.epoch-now;
+  $('count').textContent=fmtDur(left);
+  $('countLbl').textContent='next run in';
+  $('at').textContent='at '+fmtClock(nr.epoch);
+  if(left<=0){ setHero('state-blue',true,'⚙️','Starting…','the claimer is about to run'); }
+  else if(left<=300){ setHero('state-amber',false,'⏰','Starts soon','wrap up your match now'); }
+  else { setHero('state-green',false,'✅','Safe to play','free until the countdown ends'); }
 }
 
-$('runBtn').addEventListener('click', triggerRun);
-$('tokenBtn').addEventListener('click', setToken);
-document.querySelectorAll('.btn.small[data-delay]').forEach(b=>{
-  b.addEventListener('click', ()=>delayBy(parseInt(b.dataset.delay,10)));
-});
+async function load(){
+  try{ const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'}); data=await r.json(); render(); }catch(e){}
+}
+async function loadHistory(){
+  try{ const r=await fetch('history.json?t='+Date.now(),{cache:'no-store'}); const h=await r.json(); hist=Array.isArray(h)?h:[]; renderHistory(); }catch(e){}
+}
+function renderHistory(){
+  const now=nowSec(), wk=hist.filter(r=>(r.epoch||0)>=now-7*86400);
+  $('wkClaims').textContent=wk.reduce((a,r)=>a+(r.claims||0),0);
+  $('wkRuns').textContent=wk.length;
+  $('wkNone').textContent=wk.filter(r=>r.ok&&!(r.claims>0)).length;
+  $('wkFail').textContent=wk.filter(r=>!r.ok).length;
+  $('runs').innerHTML = hist.slice().sort((a,b)=>(b.epoch||0)-(a.epoch||0)).slice(0,60).map(r=>{
+    const cls=resultClass(r.result);
+    const cd=(r.cooldowns_hours||[]).length?r.cooldowns_hours.map(x=>x+'h').join(' '):'';
+    return '<div class="run"><span class="t">'+fmtClock(r.epoch)+'</span><span class="r '+cls+'">'+(r.result||'')+'</span><span class="c">'+cd+'</span></div>';
+  }).join('') || '<span class="mut">no runs yet</span>';
+}
 
-load();
-loadHistory();
-setInterval(load, 20000);        // refetch status
-setInterval(loadHistory, 60000); // refetch history
-setInterval(tick, 1000);         // tick countdown
+renderToken();
+load(); loadHistory();
+setInterval(load,20000);
+setInterval(loadHistory,60000);
+setInterval(tick,1000);
 </script>
 </body>
 </html>

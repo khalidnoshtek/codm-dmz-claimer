@@ -121,24 +121,26 @@ def record_run(summary: dict | None, repo_root: Path, retention_days: int = 7) -
 
 def read_remote_control(repo_root: Path) -> dict:
     """Fetch origin/main and return the dashboard control state from
-    docs/trigger.json: {"requested_at": <epoch>, "delay_until": <epoch>}
-    (0s on any error / missing file). `requested_at` is a manual "run now"
-    request; `delay_until` is a "push the next run to at least this time"
-    request. Uses git rather than the raw CDN URL so the values are fresh (no
-    ~5-min Fastly cache) and unauthenticated-rate-limit free. Also advances the
-    origin/main tracking ref, so the next status push rebases cleanly onto any
-    button commit."""
+    docs/trigger.json: {"requested_at", "delay_until", "run_at"} (epochs; 0 on
+    any error / missing file). `requested_at` = manual "run now"; `run_at` =
+    reschedule the next run to this absolute time (earlier OR later — prepone or
+    delay); `delay_until` = legacy "push out to at least" (still honored). Uses
+    git rather than the raw CDN URL so the values are fresh (no ~5-min Fastly
+    cache) and unauthenticated-rate-limit free. Also advances the origin/main
+    tracking ref, so the next status push rebases cleanly onto any button commit."""
+    _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0}
     try:
         f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
         if f.returncode != 0:
-            return {"requested_at": 0, "delay_until": 0}
+            return dict(_zero)
         show = _run(["git", "show", "origin/main:docs/trigger.json"], repo_root, timeout=10)
         if show.returncode != 0:
-            return {"requested_at": 0, "delay_until": 0}
+            return dict(_zero)
         d = json.loads(show.stdout)
         return {
             "requested_at": int(d.get("requested_at", 0) or 0),
             "delay_until": int(d.get("delay_until", 0) or 0),
+            "run_at": int(d.get("run_at", 0) or 0),
         }
     except Exception:
-        return {"requested_at": 0, "delay_until": 0}
+        return {"requested_at": 0, "delay_until": 0, "run_at": 0}

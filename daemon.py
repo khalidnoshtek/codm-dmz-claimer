@@ -82,6 +82,7 @@ def loop_forever() -> int:
     _ctl0 = read_remote_control(ROOT)
     last_trigger = _ctl0["requested_at"]
     last_delay = _ctl0["delay_until"]
+    last_run_at = _ctl0["run_at"]
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
@@ -213,6 +214,20 @@ def loop_forever() -> int:
                     log.info("Manual trigger received (requested_at=%d) — running a cycle now",
                              ctl["requested_at"])
                     break
+                # Reschedule request: move the next run to an absolute time —
+                # earlier (prepone) OR later (delay). run_at <= now means "now".
+                if ctl["run_at"] > last_run_at:
+                    last_run_at = ctl["run_at"]
+                    if ctl["run_at"] <= now + 5:
+                        log.info("Reschedule to now — running a cycle")
+                        break
+                    deadline = float(ctl["run_at"])
+                    log.info("Next run rescheduled to %s",
+                             time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(deadline)))
+                    if cfg.get("sleep_mac_between_cycles", True) and deadline - now > 600:
+                        schedule_wake(datetime.now() + timedelta(seconds=deadline - now - 30))
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source="manual reschedule")
+                    continue
                 # Delay ("snooze") request: push the wake time out to at least
                 # delay_until, so a scheduled run won't interrupt a game.
                 if ctl["delay_until"] > last_delay:

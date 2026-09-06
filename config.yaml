@@ -71,7 +71,7 @@ sleep_mac_between_cycles: true
 # Hard ceiling on the daemon's between-cycle sleep when OCR found ALL 3 timers
 # (high-confidence schedule). Default 7200s (2h) trades extra cycles for
 # guaranteed coverage.
-max_sleep_seconds: 7200
+max_sleep_seconds: 5400
 
 # Tighter cap when OCR found FEWER than 3 timers — we can't trust the schedule
 # because the min cooldown we read might be from a long-cooldown card while a
