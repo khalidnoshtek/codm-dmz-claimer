@@ -2,349 +2,326 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DMZ Claimer Status</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>DMZ Claimer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lucide@0.462.0/dist/umd/lucide.min.js"></script>
 <style>
   :root{
-    --bg:#0b0f14; --panel:#141b24; --panel2:#1b2531; --line:#26303d;
-    --txt:#eef3f8; --muted:#8a99ab;
-    --green:#39d98a; --amber:#ffb020; --blue:#4aa8ff; --red:#ff5470; --grey:#8a99ab;
-    --shadow:0 8px 30px rgba(0,0,0,.4);
-    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --accent:var(--green);
+    --bg:#080a0f; --card:rgba(255,255,255,.035); --card2:rgba(255,255,255,.055);
+    --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.14);
+    --txt:#eef2f8; --muted:#8c98ab; --faint:#5b6675;
+    --green:#34d399; --amber:#fbbf24; --blue:#60a5fa; --red:#f87171; --violet:#a78bfa;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    --disp:'Space Grotesk','Inter',sans-serif;
+    --shadow:0 10px 40px -12px rgba(0,0,0,.6);
   }
   *{box-sizing:border-box}
-  html,body{overflow-x:hidden}
-  body{margin:0;background:var(--bg);color:var(--txt);font-family:var(--sans);
-    -webkit-font-smoothing:antialiased;min-height:100vh;padding:18px 14px 44px;}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;min-height:100vh;color:var(--txt);font-family:var(--sans);letter-spacing:-.01em;
+    background:
+      radial-gradient(900px 500px at 12% -8%, rgba(96,165,250,.10), transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(52,211,153,.08), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;-webkit-font-smoothing:antialiased;
+    padding:max(18px,env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom));}
   .wrap{max-width:640px;margin:0 auto;}
-  header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 2px 16px;}
-  .brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:15px;letter-spacing:.2px;}
-  .dot{width:9px;height:9px;border-radius:50%;background:var(--grey);}
-  .dot.on{background:var(--accent);box-shadow:0 0 0 0 var(--accent);animation:pulse 1.8s infinite;}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,255,255,.35)}70%{box-shadow:0 0 0 8px rgba(255,255,255,0)}100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}}
-  .sub{color:var(--muted);font-size:12px;}
+  .i{width:1em;height:1em;stroke-width:2;vertical-align:-.125em;display:inline-block}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .spin{animation:spin 1s linear infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  @keyframes fadeup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .card{animation:fadeup .4s ease both}
 
-  /* hero: accent driven by state class */
-  .hero{position:relative;border-radius:20px;padding:26px 20px;text-align:center;overflow:hidden;
-    background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);box-shadow:var(--shadow);}
-  .hero::before{content:"";position:absolute;inset:0;opacity:.14;pointer-events:none;
-    background:radial-gradient(120% 120% at 50% -20%,var(--accent),transparent 60%);}
-  .hero.state-green{--accent:var(--green)} .hero.state-amber{--accent:var(--amber)}
-  .hero.state-blue{--accent:var(--blue)} .hero.state-red{--accent:var(--red)} .hero.state-grey{--accent:var(--grey)}
-  .hero .emoji{font-size:34px;line-height:1;}
-  .status{font-size:26px;font-weight:800;letter-spacing:.3px;margin:8px 0 2px;color:var(--accent);}
-  .statusSub{color:var(--muted);font-size:13px;margin-bottom:14px;}
-  .count{font-family:var(--mono);font-size:clamp(40px,13vw,72px);font-weight:700;line-height:1;
-    font-variant-numeric:tabular-nums;color:var(--txt);}
-  .countLbl{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:2px;margin-top:8px;}
-  .at{color:var(--muted);font-size:13px;margin-top:6px;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 4px 18px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+  .brand .logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:18px;
+    background:linear-gradient(140deg,rgba(96,165,250,.25),rgba(52,211,153,.2));border:1px solid var(--line2);color:#cfe0ff}
+  .upd{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:500}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}
+  .dot.live{background:var(--green);box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+  .dot.run{background:var(--blue);animation:pulse 1.1s infinite}
+  .dot.stale{background:var(--red)}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px 16px;margin-top:14px;}
-  .card h3{margin:0 0 12px;font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:700;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px;
+    box-shadow:var(--shadow);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);margin-bottom:14px}
+  .card h3{margin:0 0 14px;font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:7px}
 
-  .btn{appearance:none;border:1px solid transparent;border-radius:12px;cursor:pointer;font-family:var(--sans);
-    font-weight:700;transition:transform .05s ease,filter .15s ease;}
-  .btn:active{transform:scale(.97);}
-  .btn:disabled{opacity:.4;cursor:not-allowed;}
-  .btn-run{width:100%;padding:15px;font-size:16px;background:var(--green);color:#04140c;border-color:var(--green);}
-  .btn-run:hover:not(:disabled){filter:brightness(1.08);}
-  .reslabel{color:var(--muted);font-size:12px;margin:14px 0 8px;}
-  .chips{display:flex;flex-wrap:wrap;gap:8px;}
-  .chip{flex:1 1 auto;min-width:64px;padding:11px 8px;font-size:14px;border-radius:11px;text-align:center;
-    background:var(--panel2);border:1px solid var(--line);color:var(--txt);cursor:pointer;font-weight:600;}
-  .chip:active{transform:scale(.96);}
-  .chip.pre{color:var(--blue);border-color:rgba(74,168,255,.35);}
-  .chip.post{color:var(--amber);border-color:rgba(255,176,32,.35);}
-  .chip.first{flex-basis:100%;color:var(--green);border-color:rgba(57,217,138,.35);background:rgba(57,217,138,.08);margin-top:2px;}
-  .chip:disabled{opacity:.4;cursor:not-allowed;}
-  .msg{font-size:12.5px;margin-top:12px;min-height:16px;text-align:center;color:var(--muted);}
-  .msg.ok{color:var(--green)} .msg.err{color:var(--red)} .msg.warn{color:var(--amber)}
+  /* HERO */
+  .hero{position:relative;overflow:hidden;text-align:center;padding:30px 22px 24px;transition:border-color .4s}
+  .hero::before{content:"";position:absolute;inset:0;opacity:.5;transition:background .5s;
+    background:radial-gradient(120% 140% at 50% -20%, var(--glow,transparent), transparent 60%);pointer-events:none}
+  .hero>*{position:relative}
+  .hero.safe{--glow:rgba(52,211,153,.18);border-color:rgba(52,211,153,.28)}
+  .hero.soon{--glow:rgba(251,191,36,.20);border-color:rgba(251,191,36,.32)}
+  .hero.run{--glow:rgba(96,165,250,.20);border-color:rgba(96,165,250,.32)}
+  .hero.login{--glow:rgba(248,113,113,.20);border-color:rgba(248,113,113,.34)}
+  .stateicon{width:54px;height:54px;border-radius:16px;display:grid;place-items:center;margin:0 auto 14px;
+    font-size:26px;border:1px solid var(--line2);background:var(--card2);transition:.3s}
+  .hero.safe .stateicon{color:var(--green);background:rgba(52,211,153,.12);border-color:rgba(52,211,153,.3)}
+  .hero.soon .stateicon{color:var(--amber);background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.3)}
+  .hero.run  .stateicon{color:var(--blue);background:rgba(96,165,250,.12);border-color:rgba(96,165,250,.3)}
+  .hero.login .stateicon{color:var(--red);background:rgba(248,113,113,.12);border-color:rgba(248,113,113,.3)}
+  .statelabel{font-size:13px;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+  .count{font-family:var(--disp);font-size:clamp(46px,15vw,76px);font-weight:600;line-height:1.04;margin:6px 0 2px;
+    font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+  .hero.safe .count{color:#d8fff0}.hero.soon .count{color:#fff2d6}.hero.run .count{color:#dcebff}.hero.login .count{color:#ffe0e0}
+  .when{color:var(--muted);font-size:13.5px;font-weight:500}
+  .sub{margin-top:14px;font-size:13.5px;font-weight:600;display:inline-flex;align-items:center;gap:8px;
+    padding:9px 15px;border-radius:100px;border:1px solid transparent}
+  .hero.safe .sub{color:var(--green);background:rgba(52,211,153,.1);border-color:rgba(52,211,153,.25)}
+  .hero.soon .sub{color:var(--amber);background:rgba(251,191,36,.1);border-color:rgba(251,191,36,.28)}
+  .hero.run  .sub{color:var(--blue);background:rgba(96,165,250,.1);border-color:rgba(96,165,250,.28)}
+  .hero.login .sub{color:var(--red);background:rgba(248,113,113,.1);border-color:rgba(248,113,113,.3)}
 
-  .tok{margin-top:12px;border-top:1px solid var(--line);padding-top:12px;}
-  .tokrow{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:12.5px;}
-  .tokset{color:var(--green);font-weight:600;}
-  .tokunset{color:var(--amber);font-weight:600;}
-  .link{background:none;border:none;color:var(--blue);cursor:pointer;text-decoration:underline;font-size:12px;padding:0;font-family:var(--sans);}
-  .tokform{margin-top:10px;display:none;gap:8px;flex-direction:column;}
-  .tokform.show{display:flex;}
-  .tokform input{background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--txt);
-    padding:11px;font-size:14px;font-family:var(--mono);width:100%;}
-  .tokform .row{display:flex;gap:8px;}
-  .btn-save{flex:1;padding:11px;background:var(--blue);color:#031525;border-color:var(--blue);}
-  .btn-ghost{flex:1;padding:11px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);}
-  .hint{color:var(--muted);font-size:11.5px;line-height:1.5;}
+  /* CONTROLS */
+  .btn{appearance:none;font-family:var(--sans);cursor:pointer;border-radius:14px;font-weight:600;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .07s,background .18s,opacity .18s;border:1px solid var(--line2)}
+  .btn:active{transform:scale(.97)}
+  .btn:disabled{opacity:.4;cursor:not-allowed}
+  .btn-run{width:100%;padding:15px;font-size:15.5px;color:#04120c;
+    background:linear-gradient(180deg,#4ee3a6,#2fca8b);border-color:transparent;box-shadow:0 8px 20px -8px rgba(52,211,153,.6)}
+  .btn-run:hover{background:linear-gradient(180deg,#5cebb0,#37d495)}
+  .seg{margin-top:16px}
+  .seg .lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;display:flex;align-items:center;gap:6px}
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .chip{flex:1 1 auto;min-width:62px;padding:11px 8px;font-size:13.5px;background:var(--card2);color:var(--txt)}
+  .chip:hover{background:rgba(255,255,255,.09)}
+  .chip.pre{color:#bcd4ff}.chip.post{color:#ffe6b0}
+  .chip.ready{flex-basis:100%;color:var(--violet);background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.28);margin-top:8px}
+  .msg{margin-top:12px;font-size:12.5px;font-weight:500;color:var(--muted);min-height:16px;text-align:center;display:flex;align-items:center;justify-content:center;gap:6px}
+  .msg.ok{color:var(--green)}.msg.err{color:var(--red)}
+  .tokbar{margin-top:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--faint)}
+  .tokbar button{background:none;border:none;color:var(--blue);font:inherit;cursor:pointer;text-decoration:underline;padding:0}
+  .tokbar .set{color:var(--green)}
 
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
-  .stat{text-align:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:13px 4px;}
-  .stat .n{font-family:var(--mono);font-size:24px;font-weight:700;line-height:1;}
-  .stat.claims .n{color:var(--green)} .stat.fail .n{color:var(--red)}
-  .stat .l{font-size:9.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:5px;}
+  /* STATS */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .stat{text-align:center;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:14px 6px}
+  .stat .ic{font-size:15px;color:var(--muted);margin-bottom:6px}
+  .stat .num{font-family:var(--disp);font-size:26px;font-weight:600;line-height:1}
+  .stat.g .num{color:var(--green)}.stat.r .num{color:var(--red)}
+  .stat .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:5px}
 
-  .kv{display:flex;justify-content:space-between;gap:10px;padding:5px 0;font-size:14px;}
-  .kv .k{color:var(--muted)} .kv .v{font-weight:600;text-align:right}
-  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;}
-  .pill.ok{background:rgba(57,217,138,.16);color:var(--green)}
-  .pill.none{background:rgba(138,153,171,.18);color:var(--muted)}
-  .pill.fail{background:rgba(255,84,112,.16);color:var(--red)}
-  .pill.login{background:rgba(255,176,32,.16);color:var(--amber)}
+  .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;font-size:14px;border-top:1px solid var(--line)}
+  .row:first-of-type{border-top:none}
+  .row .k{color:var(--muted);display:flex;align-items:center;gap:8px}
+  .row .v{font-weight:600;text-align:right}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:100px;font-size:12.5px;font-weight:600}
+  .pill.ok{background:rgba(52,211,153,.14);color:var(--green)}
+  .pill.none{background:rgba(140,152,171,.16);color:var(--muted)}
+  .pill.fail{background:rgba(248,113,113,.14);color:var(--red)}
+  .pill.login{background:rgba(251,191,36,.14);color:var(--amber)}
   .cds{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-  .cd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:2px 8px}
+  .cd{font-family:var(--disp);font-size:12px;background:var(--card2);border:1px solid var(--line);border-radius:8px;padding:2px 9px}
 
-  .runs{max-height:290px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;}
-  .run{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:10px;font-size:13px;}
-  .run .t{color:var(--muted);font-size:11px;min-width:100px;font-family:var(--mono)}
-  .run .r{flex:1;font-weight:600}
-  .run .r.ok{color:var(--green)} .run .r.fail{color:var(--red)} .run .r.login{color:var(--amber)}
-  .run .c{font-family:var(--mono);font-size:11px;color:var(--muted);white-space:nowrap}
-  footer{margin-top:20px;text-align:center;color:var(--muted);font-size:11.5px;line-height:1.7}
+  .runs{display:flex;flex-direction:column;gap:7px;max-height:340px;overflow-y:auto;margin:-2px -4px;padding:2px 4px}
+  .runs::-webkit-scrollbar{width:5px}.runs::-webkit-scrollbar-thumb{background:var(--line2);border-radius:3px}
+  .run{display:flex;align-items:center;gap:11px;padding:10px 12px;background:var(--card2);border:1px solid var(--line);border-radius:12px}
+  .run .ric{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:13px;flex:none}
+  .run.ok .ric{color:var(--green);background:rgba(52,211,153,.12)}
+  .run.none .ric{color:var(--muted);background:rgba(140,152,171,.12)}
+  .run.fail .ric{color:var(--red);background:rgba(248,113,113,.12)}
+  .run.login .ric{color:var(--amber);background:rgba(251,191,36,.12)}
+  .run .rmain{flex:1;min-width:0}
+  .run .rres{font-weight:600;font-size:13.5px}
+  .run .rtime{color:var(--faint);font-size:11.5px;margin-top:1px}
+  .run .rcd{font-family:var(--disp);font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
+  footer{margin-top:18px;text-align:center;color:var(--faint);font-size:11.5px;line-height:1.7}
   .mut{color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><span id="dot" class="dot"></span> CODM DMZ Claimer</div>
-    <div class="sub" id="updated">loading…</div>
+    <div class="brand"><span class="logo"><i data-lucide="swords" class="i"></i></span> DMZ Claimer</div>
+    <div class="upd"><span id="dot" class="dot"></span><span id="updated">loading…</span></div>
   </header>
 
-  <section class="hero state-grey" id="hero">
-    <div class="emoji" id="emoji">⏳</div>
-    <div class="status" id="status">Loading…</div>
-    <div class="statusSub" id="statusSub">&nbsp;</div>
+  <section class="card hero" id="hero">
+    <div class="stateicon"><i id="stateIcon" data-lucide="loader" class="i"></i></div>
+    <div class="statelabel" id="stateLabel">Loading</div>
     <div class="count" id="count">--:--:--</div>
-    <div class="countLbl" id="countLbl">next run in</div>
-    <div class="at" id="at">&nbsp;</div>
+    <div class="when" id="when">&nbsp;</div>
+    <div class="sub" id="sub" hidden></div>
   </section>
 
-  <div class="card">
-    <h3>Controls</h3>
-    <button id="runBtn" class="btn btn-run">▶ Run claimer now</button>
-    <div class="reslabel">Reschedule the next run</div>
-    <div class="chips">
-      <button class="chip pre"  data-adj="-3600">−1h</button>
-      <button class="chip pre"  data-adj="-1800">−30m</button>
-      <button class="chip post" data-adj="1800">+30m</button>
-      <button class="chip post" data-adj="3600">+1h</button>
-      <button class="chip post" data-adj="7200">+2h</button>
-      <button class="chip first" id="firstBtn">⏱ Run when first reward is ready</button>
+  <section class="card">
+    <h3><i data-lucide="settings-2" class="i"></i> Controls</h3>
+    <button id="runBtn" class="btn btn-run"><i data-lucide="play" class="i"></i> Run claimer now</button>
+
+    <div class="seg">
+      <div class="lbl"><i data-lucide="clock" class="i"></i> Reschedule next run</div>
+      <div class="chips">
+        <button class="btn chip pre" data-adj="-3600"><i data-lucide="rewind" class="i"></i> 1h</button>
+        <button class="btn chip pre" data-adj="-1800">−30m</button>
+        <button class="btn chip post" data-adj="1800">+30m</button>
+        <button class="btn chip post" data-adj="3600">+1h</button>
+        <button class="btn chip post" data-adj="7200">+2h</button>
+      </div>
+      <button class="btn chip ready" id="readyBtn"><i data-lucide="target" class="i"></i> Run when first reward is ready</button>
     </div>
+
     <div class="msg" id="msg"></div>
-
-    <div class="tok">
-      <div class="tokrow">
-        <span id="tokState" class="tokunset">🔑 No access token on this device</span>
-        <button class="link" id="tokToggle">set token</button>
-      </div>
-      <div class="tokform" id="tokForm">
-        <input id="tokInput" type="password" placeholder="github_pat_…" autocomplete="off" autocapitalize="off" spellcheck="false">
-        <div class="row">
-          <button class="btn btn-save" id="tokSave">Save</button>
-          <button class="btn btn-ghost" id="tokClear">Clear</button>
-        </div>
-        <div class="hint">Buttons write a request to your repo, which the Mac daemon reads. Each device
-          (phone, laptop) needs the token entered once — it's saved only in this browser.
-          Create one: GitHub → Settings → Developer settings → Fine-grained tokens → this repo →
-          <b>Contents: Read and write</b>.</div>
-      </div>
+    <div class="tokbar">
+      <i data-lucide="key-round" class="i"></i>
+      <span id="tokState">no access token</span>
+      <button id="tokBtn">set token</button>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h3>Last 7 days</h3>
+  <section class="card">
+    <h3><i data-lucide="bar-chart-3" class="i"></i> Last 7 days</h3>
     <div class="stats">
-      <div class="stat claims"><div class="n" id="wkClaims">–</div><div class="l">claims</div></div>
-      <div class="stat"><div class="n" id="wkRuns">–</div><div class="l">runs</div></div>
-      <div class="stat"><div class="n" id="wkNone">–</div><div class="l">nothing</div></div>
-      <div class="stat fail"><div class="n" id="wkFail">–</div><div class="l">failed</div></div>
+      <div class="stat g"><div class="ic"><i data-lucide="gift" class="i"></i></div><div class="num" id="wkClaims">–</div><div class="lbl">claims</div></div>
+      <div class="stat"><div class="ic"><i data-lucide="repeat" class="i"></i></div><div class="num" id="wkRuns">–</div><div class="lbl">runs</div></div>
+      <div class="stat"><div class="ic"><i data-lucide="hourglass" class="i"></i></div><div class="num" id="wkNone">–</div><div class="lbl">on cd</div></div>
+      <div class="stat r"><div class="ic"><i data-lucide="alert-triangle" class="i"></i></div><div class="num" id="wkFail">–</div><div class="lbl">failed</div></div>
     </div>
-  </div>
+  </section>
 
-  <div class="card">
-    <h3>Last run</h3>
-    <div class="kv"><span class="k">Result</span><span class="v" id="lrResult">—</span></div>
-    <div class="kv"><span class="k">When</span><span class="v" id="lrWhen">—</span></div>
-    <div class="kv"><span class="k">Cooldowns</span><span class="v"><span class="cds" id="lrCds">—</span></span></div>
-  </div>
-
-  <div class="card">
-    <h3>Recent runs</h3>
+  <section class="card">
+    <h3><i data-lucide="history" class="i"></i> Recent runs</h3>
     <div class="runs" id="runs"><span class="mut">loading…</span></div>
-  </div>
+  </section>
 
-  <footer>
-    Auto-refreshes every 20s · countdown = when the daemon next drives the AVD.<br>
-    <span class="mut">Reschedule or delay before the countdown hits zero to avoid getting kicked mid-match.</span>
-  </footer>
+  <footer>Auto-refreshes every 20s · countdown is when the claimer next drives the AVD.<br>
+    <span class="mut">Reschedule/run needs a one-time GitHub token (stored only in this browser).</span></footer>
 </div>
 
 <script>
-const $=id=>document.getElementById(id);
-const pad=n=>String(n).padStart(2,'0');
-const nowSec=()=>Math.floor(Date.now()/1000);
-function fmtDur(s){s=Math.max(0,Math.floor(s));return pad(s/3600|0)+':'+pad((s%3600)/60|0)+':'+pad(s%60);}
+const $=id=>document.getElementById(id), pad=n=>String(n).padStart(2,'0');
+function icons(){ try{ lucide.createIcons(); }catch(e){} }
+function fmtDur(s){s=Math.max(0,Math.floor(s));const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return pad(h)+':'+pad(m)+':'+pad(x);}
 function fmtClock(e){const d=new Date(e*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+d.toLocaleDateString([],{month:'short',day:'numeric'});}
-function ago(e){const s=nowSec()-e;if(s<60)return s+'s ago';if(s<3600)return (s/60|0)+'m ago';if(s<86400)return (s/3600|0)+'h '+((s%3600)/60|0)+'m ago';return (s/86400|0)+'d ago';}
+function ago(e){const s=(Date.now()/1000|0)-e;if(s<60)return s+'s ago';if(s<3600)return (s/60|0)+'m ago';if(s<86400)return (s/3600|0)+'h ago';return (s/86400|0)+'d ago';}
+function setIcon(el,name,cls){el.setAttribute('data-lucide',name);el.className='i'+(cls?' '+cls:'');icons();}
 
-const GH_OWNER='khalidnoshtek', GH_REPO='codm-dmz-claimer', GH_PATH='docs/trigger.json';
-const GH_API=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_PATH}`;
-const TOKEN_KEY='codm_gh_token';
-let data=null, hist=[], pendingRunAt=0;
-
-/* ---------- token ---------- */
-function getToken(){return (localStorage.getItem(TOKEN_KEY)||'').trim();}
-function renderToken(){
-  const has=!!getToken();
-  $('tokState').textContent = has ? '🔑 Access token set on this device' : '🔑 No access token on this device';
-  $('tokState').className = has ? 'tokset' : 'tokunset';
-  $('tokToggle').textContent = has ? 'change' : 'set token';
-  setControlsEnabled(has);
-}
-function setControlsEnabled(on){
-  $('runBtn').disabled=!on; $('firstBtn').disabled=!on;
-  document.querySelectorAll('.chip[data-adj]').forEach(c=>c.disabled=!on);
-}
-$('tokToggle').addEventListener('click',()=>{ $('tokForm').classList.toggle('show'); $('tokInput').value=getToken(); });
-$('tokSave').addEventListener('click',()=>{ localStorage.setItem(TOKEN_KEY,$('tokInput').value.trim()); $('tokForm').classList.remove('show'); renderToken(); msg(getToken()?'Token saved on this device.':'Token cleared.', getToken()?'ok':''); });
-$('tokClear').addEventListener('click',()=>{ localStorage.removeItem(TOKEN_KEY); $('tokInput').value=''; renderToken(); msg('Token cleared.',''); });
-function msg(t,c){const m=$('msg');m.textContent=t;m.className='msg'+(c?' '+c:'');}
-
-/* ---------- write control file ---------- */
-async function writeControl(patch, okMsg){
-  const token=getToken();
-  if(!token){ $('tokForm').classList.add('show'); msg('Enter an access token first.','warn'); return false; }
-  const h={'Authorization':'Bearer '+token,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
-  msg('Sending…');
-  try{
-    const g=await fetch(GH_API+'?ref=main&t='+Date.now(),{headers:h,cache:'no-store'});
-    if(g.status===401||g.status===403){ msg('Token invalid/expired or missing Contents:write.','err'); return false; }
-    const gj=await g.json();
-    let cur={}; try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
-    const merged=Object.assign({requested_at:0,delay_until:0,run_at:0},cur,patch);
-    const body={message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(merged,null,2)+'\n'),sha:gj.sha,branch:'main'};
-    const p=await fetch(GH_API,{method:'PUT',headers:h,body:JSON.stringify(body)});
-    if(p.ok){ msg(okMsg,'ok'); return true; }
-    const pj=await p.json().catch(()=>({})); msg('Failed: '+(pj.message||('HTTP '+p.status)),'err'); return false;
-  }catch(e){ msg('Network error.','err'); return false; }
-}
-
-/* ---------- actions ---------- */
-let fastTimer=null;
-function fastPoll(){const end=Date.now()+120000;if(fastTimer)clearInterval(fastTimer);
-  fastTimer=setInterval(async()=>{await load();if(Date.now()>end){clearInterval(fastTimer);fastTimer=null;$('runBtn').disabled=!getToken();}},4000);}
-
-async function runNow(){ $('runBtn').disabled=true;
-  const ok=await writeControl({requested_at:nowSec()},'✅ Run requested — starts within ~45s.');
-  if(ok){pendingRunAt=0;fastPoll();} else $('runBtn').disabled=!getToken(); }
-
-function currentNext(){ return Math.max(pendingRunAt||0, (data&&data.next_run?data.next_run.epoch:0)||0, nowSec()); }
-async function adjust(sec){
-  let base = pendingRunAt || (data&&data.next_run?data.next_run.epoch:0) || nowSec();
-  let target = base + sec;
-  const min = nowSec()+60;
-  if(target<min) target=min;
-  pendingRunAt=target;
-  const verb = sec<0 ? 'Moved earlier' : 'Delayed';
-  const ok=await writeControl({run_at:target}, `⏱ ${verb} → next run ~${fmtClock(target)} (applies within ~45s).`);
-  if(ok) fastPoll(); else pendingRunAt=0;
-}
-async function runAtFirstReward(){
-  if(!data||!data.last_run||!(data.last_run.cooldowns_hours||[]).length){ msg('No cooldown data yet — try Run now.','warn'); return; }
-  const earliest = data.last_run.epoch + Math.min(...data.last_run.cooldowns_hours)*3600;
-  if(earliest<=nowSec()+30){ runNow(); return; }
-  pendingRunAt=earliest;
-  const ok=await writeControl({run_at:Math.floor(earliest)}, `⏱ Next run set to first reward ~${fmtClock(earliest)}.`);
-  if(ok) fastPoll(); else pendingRunAt=0;
-}
-$('runBtn').addEventListener('click',runNow);
-$('firstBtn').addEventListener('click',runAtFirstReward);
-document.querySelectorAll('.chip[data-adj]').forEach(c=>c.addEventListener('click',()=>adjust(parseInt(c.dataset.adj,10))));
-
-/* ---------- render ---------- */
-function setHero(cls,accentDot,emoji,status,sub){
-  $('hero').className='hero '+cls;
-  $('dot').className='dot'+(accentDot?' on':'');
-  $('emoji').textContent=emoji; $('status').textContent=status; $('statusSub').textContent=sub;
-}
-function resultClass(r){ if(!r)return''; r=r.toUpperCase(); if(r.includes('NEEDS LOGIN'))return'login'; if(r.startsWith('CLAIMED'))return'ok'; if(r.startsWith('FAILED'))return'fail'; return'none'; }
-
+let data=null;
+async function load(){try{const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'});data=await r.json();render();}catch(e){}}
 function render(){
-  if(!data) return;
-  const upd=data.updated_at_epoch||0;
-  const stale=nowSec()-upd>3*3600;
-  $('updated').textContent= upd? 'updated '+ago(upd):'no data yet';
-
+  if(!data)return;
+  const upd=data.updated_at_epoch||0, stale=(Date.now()/1000|0)-upd>3*3600;
+  $('updated').textContent=upd?('updated '+ago(upd)):'no data';
+  $('dot').className='dot '+(stale?'stale':(data.state==='running'?'run':'live'));
   const lr=data.last_run;
   if(lr){
-    const cls=resultClass(lr.result);
-    const label=lr.result||'—';
-    $('lrResult').innerHTML='<span class="pill '+(cls||'none')+'">'+label+'</span>';
-    $('lrWhen').textContent=fmtClock(lr.epoch)+' ('+ago(lr.epoch)+')';
+    const isLogin=lr.result==='NEEDS LOGIN';
+    const cls=isLogin?'login':(!lr.ok?'fail':(lr.claims>0?'ok':'none'));
+    const label=isLogin?'Needs login':(!lr.ok?'Failed':(lr.claims>0?('Claimed '+lr.claims):'Nothing to claim'));
+    const ic={ok:'gift',none:'hourglass',fail:'alert-triangle',login:'log-in'}[cls];
+    $('lastResult').innerHTML='<span class="pill '+cls+'"><i data-lucide="'+ic+'" class="i"></i>'+label+'</span>';
+    $('lastWhen').textContent=fmtClock(lr.epoch)+' ('+ago(lr.epoch)+')';
     const cds=lr.cooldowns_hours||[];
-    $('lrCds').innerHTML=cds.length?cds.map(h=>'<span class="cd">'+h+'h</span>').join(''):'<span class="mut">—</span>';
+    $('lastCds').innerHTML=cds.length?cds.map(h=>'<span class="cd">'+h+'h</span>').join(''):'<span class="mut">—</span>';
   }
-  tick();
+  $('nextAt').textContent=data.next_run?fmtClock(data.next_run.epoch):'—';
+  $('nextSrc').textContent=data.next_run&&data.next_run.source?data.next_run.source:'—';
+  tick();icons();
 }
-
 function tick(){
-  if(!data) return;
-  const now=nowSec();
-  const nr=data.next_run;
+  if(!data)return;
+  const now=Date.now()/1000|0, hero=$('hero'), nr=data.next_run;
   const stale=now-(data.updated_at_epoch||0)>3*3600;
-  const loginNeeded = data.last_run && resultClass(data.last_run.result)==='login';
-
-  // clear pendingRunAt once the daemon's published next_run has caught up (within 90s)
-  if(pendingRunAt && nr && Math.abs(nr.epoch-pendingRunAt)<90) pendingRunAt=0;
-
-  if(data.state==='running'){
-    setHero('state-blue',true,'⚙️','Running now','The claimer is using the AVD — hold off playing');
-    $('count').textContent='•••'; $('countLbl').textContent='in progress'; $('at').textContent='';
-    return;
+  const isLogin=data.last_run&&data.last_run.result==='NEEDS LOGIN';
+  let state,icon,label,count,when,sub,subIcon;
+  if(data.state==='running'){state='run';icon='loader';label='Claimer running';count='ACTIVE';when='the AVD is in use right now';sub='Please don’t play until it finishes';subIcon='gamepad-2';}
+  else if(isLogin){state='login';icon='log-in';label='Sign-in needed';count='LOGIN';when='CODM logged out of your account';sub='Open CODM on the Mac and sign in';subIcon='alert-triangle';}
+  else if(!nr){state='safe';icon=stale?'wifi-off':'moon';label=stale?'Offline':'Idle';count=stale?'OFFLINE':'—';when=stale?'daemon hasn’t reported in >3h':'waiting for first cycle';sub='';}
+  else{
+    const left=nr.epoch-now;
+    if(left<=0){state='run';icon='loader';label='Starting soon';count='0:00';when='next run is due now';sub='';}
+    else if(left<=300){state='soon';icon='alarm-clock';label='Starts soon';count=fmtDur(left);when='at '+fmtClock(nr.epoch);sub='Wrap up your match — claimer takes over soon';subIcon='alert-triangle';}
+    else{state='safe';icon='gamepad-2';label='Safe to play';count=fmtDur(left);when='next run at '+fmtClock(nr.epoch);sub='Safe to play for '+fmtDur(left);subIcon='check';}
   }
-  if(loginNeeded){
-    setHero('state-red',false,'🔑','Sign-in needed','Open CODM on the Mac and log into your Activision account');
-    $('count').textContent='⚠'; $('countLbl').textContent='action required'; $('at').textContent='';
-    return;
-  }
-  if(stale || !nr){
-    setHero('state-grey',false,'⚠️', stale?'Daemon offline?':'Waiting', stale?'no update in over 3h':'waiting for first cycle');
-    $('count').textContent= stale?'—':'…'; $('countLbl').textContent='next run'; $('at').textContent='';
-    return;
-  }
-  const left=nr.epoch-now;
-  $('count').textContent=fmtDur(left);
-  $('countLbl').textContent='next run in';
-  $('at').textContent='at '+fmtClock(nr.epoch);
-  if(left<=0){ setHero('state-blue',true,'⚙️','Starting…','the claimer is about to run'); }
-  else if(left<=300){ setHero('state-amber',false,'⏰','Starts soon','wrap up your match now'); }
-  else { setHero('state-green',false,'✅','Safe to play','free until the countdown ends'); }
+  hero.className='card hero '+state;
+  setIcon($('stateIcon'),icon,(state==='run'||count==='0:00')?'i spin':'i');
+  $('stateLabel').textContent=label;$('count').textContent=count;$('when').textContent=when;
+  const s=$('sub');
+  if(sub){s.hidden=false;s.innerHTML='<i data-lucide="'+subIcon+'" class="i"></i>'+sub;icons();}else s.hidden=true;
 }
 
-async function load(){
-  try{ const r=await fetch('status.json?t='+Date.now(),{cache:'no-store'}); data=await r.json(); render(); }catch(e){}
-}
-async function loadHistory(){
-  try{ const r=await fetch('history.json?t='+Date.now(),{cache:'no-store'}); const h=await r.json(); hist=Array.isArray(h)?h:[]; renderHistory(); }catch(e){}
-}
-function renderHistory(){
-  const now=nowSec(), wk=hist.filter(r=>(r.epoch||0)>=now-7*86400);
+/* ---- history ---- */
+async function loadHistory(){try{const r=await fetch('history.json?t='+Date.now(),{cache:'no-store'});renderHistory(await r.json());}catch(e){}}
+function renderHistory(h){
+  if(!Array.isArray(h))h=[];
+  const now=Date.now()/1000|0, wk=h.filter(r=>(r.epoch||0)>=now-7*86400);
   $('wkClaims').textContent=wk.reduce((a,r)=>a+(r.claims||0),0);
   $('wkRuns').textContent=wk.length;
   $('wkNone').textContent=wk.filter(r=>r.ok&&!(r.claims>0)).length;
   $('wkFail').textContent=wk.filter(r=>!r.ok).length;
-  $('runs').innerHTML = hist.slice().sort((a,b)=>(b.epoch||0)-(a.epoch||0)).slice(0,60).map(r=>{
-    const cls=resultClass(r.result);
+  const rows=h.slice().sort((a,b)=>(b.epoch||0)-(a.epoch||0)).slice(0,60).map(r=>{
+    const isLogin=r.result==='NEEDS LOGIN';
+    const cls=isLogin?'login':(!r.ok?'fail':(r.claims>0?'ok':'none'));
+    const ic={ok:'gift',none:'hourglass',fail:'alert-triangle',login:'log-in'}[cls];
+    const label=isLogin?'Needs login':(!r.ok?(r.result||'Failed'):(r.claims>0?('Claimed '+r.claims):'Nothing to claim'));
     const cd=(r.cooldowns_hours||[]).length?r.cooldowns_hours.map(x=>x+'h').join(' '):'';
-    return '<div class="run"><span class="t">'+fmtClock(r.epoch)+'</span><span class="r '+cls+'">'+(r.result||'')+'</span><span class="c">'+cd+'</span></div>';
-  }).join('') || '<span class="mut">no runs yet</span>';
+    return `<div class="run ${cls}"><div class="ric"><i data-lucide="${ic}" class="i"></i></div><div class="rmain"><div class="rres">${label}</div><div class="rtime">${fmtClock(r.epoch)}</div></div><div class="rcd">${cd}</div></div>`;
+  }).join('');
+  $('runs').innerHTML=rows||'<span class="mut">no runs yet</span>';
+  icons();
 }
 
-renderToken();
-load(); loadHistory();
-setInterval(load,20000);
-setInterval(loadHistory,60000);
-setInterval(tick,1000);
+/* ---- controls: trigger / reschedule ---- */
+const OWNER='khalidnoshtek',REPO='codm-dmz-claimer',PATH='docs/trigger.json',TKEY='codm_gh_token',HINT=45;
+const API=`https://api.github.com/repos/${OWNER}/${REPO}/contents/${PATH}`;
+let pendingAt=0;
+const tok=()=>(localStorage.getItem(TKEY)||'').trim();
+function refreshTok(){const t=tok();$('tokState').textContent=t?'token set':'no access token';$('tokState').className=t?'set':'';$('tokBtn').textContent=t?'change':'set token';}
+function setTok(){const t=prompt('Paste a GitHub fine-grained token with "Contents: Read and write" on codm-dmz-claimer.\nCreate at github.com/settings/tokens?type=beta. Stored only in this browser.',tok());if(t!==null){localStorage.setItem(TKEY,t.trim());refreshTok();msg(t.trim()?'Token saved.':'Token cleared.',t.trim()?'ok':'');}}
+function msg(t,c){const m=$('msg');m.innerHTML=(c==='ok'?'<i data-lucide="check" class="i"></i>':c==='err'?'<i data-lucide="x" class="i"></i>':'')+t;m.className='msg'+(c?' '+c:'');icons();}
+let fast=null;
+function fastPoll(){const end=Date.now()+120000;clearInterval(fast);fast=setInterval(async()=>{await load();if(data&&data.state==='running')msg('Claimer is running now.','ok');if(Date.now()>end){clearInterval(fast);$('runBtn').disabled=false;}},5000);}
+async function write(patch,okMsg){
+  let t=tok();if(!t){setTok();t=tok();if(!t){msg('A token is required.','err');return false;}}
+  const H={'Authorization':'Bearer '+t,'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  msg('Sending…');
+  try{
+    const g=await fetch(API+'?ref=main&t='+Date.now(),{headers:H,cache:'no-store'});
+    if(g.status===401||g.status===403){msg('Token invalid/expired or missing Contents:write.','err');return false;}
+    const gj=await g.json();let cur={};try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
+    const body={requested_at:0,delay_until:0,run_at:0,...cur,...patch};
+    const p=await fetch(API,{method:'PUT',headers:H,body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(body,null,2)+'\n'),sha:gj.sha,branch:'main'})});
+    if(p.ok){msg(okMsg,'ok');return true;}
+    const pj=await p.json().catch(()=>({}));msg('Failed: '+(pj.message||('HTTP '+p.status)),'err');return false;
+  }catch(e){msg('Network error.','err');return false;}
+}
+async function runNow(){$('runBtn').disabled=true;const ok=await write({requested_at:Date.now()/1000|0},'Triggered — starts within ~'+HINT+'s.');if(ok)fastPoll();else $('runBtn').disabled=false;}
+async function adjust(sec){
+  const now=Date.now()/1000|0, base=Math.max(pendingAt,(data&&data.next_run?data.next_run.epoch:0),now);
+  let at=base+sec; if(at<now+60)at=now+60; pendingAt=at;
+  await write({run_at:at}, (sec<0?'Moved earlier':'Delayed')+' → next run ~'+fmtClock(at)+' (applies in ~'+HINT+'s).');
+}
+async function runWhenReady(){
+  const lr=data&&data.last_run;
+  if(!lr||!(lr.cooldowns_hours||[]).length){msg('No cooldown info yet to target.','err');return;}
+  const now=Date.now()/1000|0;
+  let at=lr.epoch+Math.min(...lr.cooldowns_hours)*3600+120;
+  if(at<now+60)at=now+60; pendingAt=at;
+  await write({run_at:at},'Set to run when first reward unlocks (~'+fmtClock(at)+').');
+}
+$('runBtn').addEventListener('click',runNow);
+$('tokBtn').addEventListener('click',setTok);
+$('readyBtn').addEventListener('click',runWhenReady);
+document.querySelectorAll('.chip[data-adj]').forEach(b=>b.addEventListener('click',()=>adjust(parseInt(b.dataset.adj,10))));
+
+/* build "last run / next run" detail card dynamically (kept out of markup for brevity) */
+(function(){
+  const c=document.createElement('section');c.className='card';
+  c.innerHTML=`<h3><i data-lucide="receipt-text" class="i"></i> Details</h3>
+    <div class="row"><span class="k"><i data-lucide="gift" class="i"></i>Last result</span><span class="v" id="lastResult">—</span></div>
+    <div class="row"><span class="k"><i data-lucide="clock-4" class="i"></i>Last run</span><span class="v" id="lastWhen">—</span></div>
+    <div class="row"><span class="k"><i data-lucide="timer" class="i"></i>Cooldowns</span><span class="v"><span class="cds" id="lastCds">—</span></span></div>
+    <div class="row"><span class="k"><i data-lucide="calendar-clock" class="i"></i>Next run</span><span class="v" id="nextAt">—</span></div>
+    <div class="row"><span class="k"><i data-lucide="info" class="i"></i>Basis</span><span class="v mut" id="nextSrc" style="font-size:12px;font-weight:500">—</span></div>`;
+  document.querySelector('.hero').insertAdjacentElement('afterend',c);
+})();
+
+icons();refreshTok();load();loadHistory();
+setInterval(load,20000);setInterval(loadHistory,60000);setInterval(tick,1000);
 </script>
 </body>
 </html>
