@@ -202,6 +202,31 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         log.info("Summary: %s", summary)
         return summary
 
+    # CODM throws promo popups (battle-pass, "FINAL WEEK FOR CP", event banners)
+    # at unpredictable times — often AFTER the early dismiss_popups step, right
+    # on the main lobby where they cover the DMZ:RECON tile and block navigation
+    # (the classic dmz_lobby_check failure). Before each lobby->DMZ nav step,
+    # close any popup whose X matches 10_popup_close_x.png. Scoped to the nav
+    # steps only, so it never taps a close-X on the claim screens.
+    _close_x = TEMPLATES / "10_popup_close_x.png"
+    _dismiss_before = {"tap_home_icon", "enter_dmz_mode", "dmz_lobby_check", "tap_black_market"}
+
+    def _dismiss_hook(step) -> None:
+        if dry_run or step.name not in _dismiss_before:
+            return
+        try:
+            from lib.vision import find_all
+            for _ in range(3):
+                hits = find_all(device.screencap(), _close_x,
+                                threshold=float(cfg.get("match_threshold", 0.82)))
+                if not hits:
+                    break
+                log.info("pre-step popup dismiss: tapping close-X at (%d,%d)", hits[0].x, hits[0].y)
+                device.tap(hits[0].x, hits[0].y)
+                time.sleep(0.8)
+        except Exception:
+            pass
+
     result = run_flow(
         device,
         nav_steps,
@@ -211,6 +236,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         screen_settle=float(cfg.get("screen_settle_seconds", 2.5)),
         tap_settle=float(cfg.get("tap_settle_seconds", 1.2)),
         dry_run=dry_run,
+        pre_step_hook=_dismiss_hook,
     )
 
     # Recovery: if the flow aborted, check whether we even have CODM in
@@ -234,12 +260,30 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             else:
                 log.error("Recovery: CODM didn't come back after relaunch")
         else:
-            # CODM is foregrounded but on an unknown screen. Try sending a few
-            # BACK keys to dismiss any modal dialog, then retry the flow.
-            log.info("Recovery: CODM foregrounded but on unknown screen. Pressing BACK 3x.")
-            for _ in range(3):
-                device.back()
-                time.sleep(1.0)
+            # CODM is foregrounded but on an unknown screen — most often a promo
+            # popup covering the lobby. Close it via its X first; only fall back
+            # to BACK keys if there's no popup X (BACK on the lobby opens the
+            # "Quit the game?" dialog, so we avoid it when we can).
+            dismissed = False
+            try:
+                from lib.vision import find_all
+                for _ in range(3):
+                    hits = find_all(device.screencap(), _close_x,
+                                    threshold=float(cfg.get("match_threshold", 0.82)))
+                    if not hits:
+                        break
+                    device.tap(hits[0].x, hits[0].y)
+                    dismissed = True
+                    time.sleep(0.8)
+            except Exception:
+                pass
+            if dismissed:
+                log.info("Recovery: closed promo popup(s) via X")
+            else:
+                log.info("Recovery: no popup X found; pressing BACK 2x.")
+                for _ in range(2):
+                    device.back()
+                    time.sleep(1.0)
         log.info("Recovery: retrying navigation flow once")
         result = run_flow(
             device,
@@ -250,6 +294,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             screen_settle=float(cfg.get("screen_settle_seconds", 2.5)),
             tap_settle=float(cfg.get("tap_settle_seconds", 1.2)),
             dry_run=dry_run,
+            pre_step_hook=_dismiss_hook,
         )
         if result.ok():
             log.info("Recovery: SUCCESS — flow completed on retry")
