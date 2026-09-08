@@ -510,5 +510,12 @@
       2.3,
       12.0
     ]
+  },
+  {
+    "epoch": 1788882150,
+    "ok": false,
+    "result": "FAILED at dmz_lobby_check",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
