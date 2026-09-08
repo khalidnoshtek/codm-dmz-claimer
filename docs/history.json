@@ -1,15 +1,5 @@
 [
   {
-    "epoch": 1788260513,
-    "ok": true,
-    "result": "nothing claimable",
-    "claims": 0,
-    "cooldowns_hours": [
-      1.4,
-      5.4
-    ]
-  },
-  {
     "epoch": 1788264421,
     "ok": false,
     "result": "FAILED at dmz_lobby_check",
@@ -495,6 +485,13 @@
     "ok": true,
     "result": "CLAIMED 3",
     "claims": 3,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1788867258,
+    "ok": false,
+    "result": "FAILED at dmz_lobby_check",
+    "claims": 0,
     "cooldowns_hours": []
   }
 ]
