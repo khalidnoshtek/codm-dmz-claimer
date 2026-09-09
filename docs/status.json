@@ -1,11 +1,19 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1788957267,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
+    "epoch": 1788957561,
+    "ok": true,
+    "result": "nothing claimable",
     "claims": 0,
-    "cooldowns_hours": []
+    "cooldowns_hours": [
+      0.7,
+      0.8,
+      4.9
+    ]
   },
-  "updated_at_epoch": 1788957267
+  "next_run": {
+    "epoch": 1788960222,
+    "source": "OCR (burst cluster of 2 cooldowns, min=2453s max=2756s, found 3/3)"
+  },
+  "updated_at_epoch": 1788957561
 }

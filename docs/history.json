@@ -558,5 +558,16 @@
     "result": "FAILED at dmz_lobby_check",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1788957561,
+    "ok": true,
+    "result": "nothing claimable",
+    "claims": 0,
+    "cooldowns_hours": [
+      0.7,
+      0.8,
+      4.9
+    ]
   }
 ]
