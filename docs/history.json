@@ -590,5 +590,12 @@
     "result": "CLAIMED 1",
     "claims": 1,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789026428,
+    "ok": false,
+    "result": "FAILED at dmz_lobby_check",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
