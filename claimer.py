@@ -211,34 +211,47 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     _close_x = TEMPLATES / "10_popup_close_x.png"
     _dismiss_before = {"tap_home_icon", "enter_dmz_mode", "dmz_lobby_check", "tap_black_market"}
 
+    # Known modal-dialog phrases (no close-X; dismissed by a single BACK). We
+    # only ever press BACK when one of these is actually on screen — blind BACK
+    # walks straight out of CODM to the Android home screen.
+    _modal_words = ("EXPIRED", "DEVICE STORAGE", "STORAGE SPACE", "REMOVE UNUSED",
+                    "LIMITED ITEM", "NOT ENOUGH", "MAINTENANCE", "ANNOUNCEMENT",
+                    "INSUFFICIENT")
+
     def _dismiss_hook(step) -> None:
         if dry_run or step.name not in _dismiss_before:
             return
         try:
             from lib.vision import find_all, find_template
+            import cv2 as _cv2
+            import pytesseract as _pt
             thr = float(cfg.get("match_threshold", 0.82))
             tpl = TEMPLATES / step.template
             for _ in range(6):
                 screen = device.screencap()
-                # Target screen is clear (this step's element is visible) -> no
-                # popup in the way, stop. This guard also makes the BACK path
-                # below safe: we only BACK while the target is NOT visible.
+                # Target visible -> nothing blocking, stop.
                 if step.template and find_template(screen, tpl, threshold=thr):
                     return
-                # 1) Promo banners (battle-pass, event) have a top-right close X.
+                # 1) Promo banners (battle-pass, event) — top-right close X.
                 hits = find_all(screen, _close_x, threshold=thr)
                 if hits:
                     log.info("popup dismiss: close-X at (%d,%d)", hits[0].x, hits[0].y)
                     device.tap(hits[0].x, hits[0].y)
                     time.sleep(0.9)
                     continue
-                # 2) Modal dialogs (TIME LIMITED ITEM EXPIRED, DEVICE STORAGE,
-                #    announcements) have no X and are dismissed with BACK. CODM
-                #    stacks several, so we loop. BACK never confirms the "Quit?"
-                #    dialog (that needs a button tap), so this can't quit the game.
-                log.info("popup dismiss: no close-X and target not visible — pressing BACK")
-                device.back()
-                time.sleep(1.1)
+                # 2) Modal dialogs (EXPIRED items, DEVICE STORAGE, announcements)
+                #    have no X and are dismissed with a single BACK. Only BACK
+                #    when we can actually SEE such a dialog — never blindly, or
+                #    the BACK cascade exits CODM entirely.
+                txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
+                if any(w in txt for w in _modal_words):
+                    log.info("popup dismiss: modal dialog detected — BACK once")
+                    device.back()
+                    time.sleep(1.3)
+                    continue
+                # Unknown screen with no recognizable popup — don't guess with
+                # BACK; let the step's own timeout / recovery handle it.
+                return
         except Exception:
             pass
 
