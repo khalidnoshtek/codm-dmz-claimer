@@ -606,5 +606,12 @@
     "cooldowns_hours": [
       8.0
     ]
+  },
+  {
+    "epoch": 1789037282,
+    "ok": false,
+    "result": "FAILED at dmz_lobby_check",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
