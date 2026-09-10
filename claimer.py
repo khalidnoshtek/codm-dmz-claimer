@@ -247,11 +247,23 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     device.tap(hits[0].x, hits[0].y)
                     time.sleep(0.9)
                     continue
-                # 2) Modal dialogs (EXPIRED items, DEVICE STORAGE, announcements)
+                # OCR once for dialog keywords.
+                txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
+                # 2) Network-error dialog ("connection unstable" / "please check
+                #    your connection") — buttons are QUIT GAME (left) + RETRY
+                #    (right of the centered pair). Tap RETRY, NEVER quit. The
+                #    hook loops, so repeated RETRYs give the connection time to
+                #    settle during the cold load.
+                if ("UNSTABLE" in txt or "CHECK YOUR CONNECTION" in txt
+                        or ("NETWORK" in txt and "QUIT GAME" in txt)):
+                    log.info("popup dismiss: network-error dialog — tapping RETRY (1770,953)")
+                    device.tap(1770, 953)
+                    time.sleep(2.5)
+                    continue
+                # 3) Modal dialogs (EXPIRED items, DEVICE STORAGE, announcements)
                 #    have no X and are dismissed with a single BACK. Only BACK
                 #    when we actually SEE such a dialog — never blindly, or the
                 #    BACK cascade walks out of CODM to the Android home screen.
-                txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
                 if any(w in txt for w in _modal_words):
                     log.info("popup dismiss: modal dialog detected — BACK once")
                     device.back()
