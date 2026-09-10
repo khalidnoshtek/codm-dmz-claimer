@@ -218,6 +218,13 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     "LIMITED ITEM", "NOT ENOUGH", "MAINTENANCE", "ANNOUNCEMENT",
                     "INSUFFICIENT")
 
+    # How long each step's hook will WAIT for its target to appear while
+    # dismissing popups. enter_dmz_mode gets the big budget because the lobby
+    # takes ~40s to render after login ("Getting Version Info"); rushing past
+    # that was the real cause of the dmz_lobby_check failures.
+    _hook_budget = {"enter_dmz_mode": 60.0, "dmz_lobby_check": 25.0,
+                    "tap_black_market": 15.0, "tap_home_icon": 6.0}
+
     def _dismiss_hook(step) -> None:
         if dry_run or step.name not in _dismiss_before:
             return
@@ -227,9 +234,10 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             import pytesseract as _pt
             thr = float(cfg.get("match_threshold", 0.82))
             tpl = TEMPLATES / step.template
-            for _ in range(6):
+            deadline = time.time() + _hook_budget.get(step.name, 8.0)
+            while time.time() < deadline:
                 screen = device.screencap()
-                # Target visible -> nothing blocking, stop.
+                # Target visible -> lobby/screen is ready and clear, stop.
                 if step.template and find_template(screen, tpl, threshold=thr):
                     return
                 # 1) Promo banners (battle-pass, event) — top-right close X.
@@ -241,17 +249,17 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     continue
                 # 2) Modal dialogs (EXPIRED items, DEVICE STORAGE, announcements)
                 #    have no X and are dismissed with a single BACK. Only BACK
-                #    when we can actually SEE such a dialog — never blindly, or
-                #    the BACK cascade exits CODM entirely.
+                #    when we actually SEE such a dialog — never blindly, or the
+                #    BACK cascade walks out of CODM to the Android home screen.
                 txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
                 if any(w in txt for w in _modal_words):
                     log.info("popup dismiss: modal dialog detected — BACK once")
                     device.back()
                     time.sleep(1.3)
                     continue
-                # Unknown screen with no recognizable popup — don't guess with
-                # BACK; let the step's own timeout / recovery handle it.
-                return
+                # Nothing to dismiss yet — the screen is probably still loading
+                # (lobby not rendered). Wait and re-check until the budget runs out.
+                time.sleep(1.5)
         except Exception:
             pass
 
@@ -288,30 +296,12 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             else:
                 log.error("Recovery: CODM didn't come back after relaunch")
         else:
-            # CODM is foregrounded but on an unknown screen — most often a promo
-            # popup covering the lobby. Close it via its X first; only fall back
-            # to BACK keys if there's no popup X (BACK on the lobby opens the
-            # "Quit the game?" dialog, so we avoid it when we can).
-            dismissed = False
-            try:
-                from lib.vision import find_all
-                for _ in range(3):
-                    hits = find_all(device.screencap(), _close_x,
-                                    threshold=float(cfg.get("match_threshold", 0.82)))
-                    if not hits:
-                        break
-                    device.tap(hits[0].x, hits[0].y)
-                    dismissed = True
-                    time.sleep(0.8)
-            except Exception:
-                pass
-            if dismissed:
-                log.info("Recovery: closed promo popup(s) via X")
-            else:
-                log.info("Recovery: no popup X found; pressing BACK 2x.")
-                for _ in range(2):
-                    device.back()
-                    time.sleep(1.0)
+            # CODM is foregrounded but on an unknown screen — most often the
+            # lobby still loading or a popup covering it. Do NOT blind-BACK
+            # (that walks out of CODM). The retry's pre-step hook already waits
+            # for the lobby and dismisses popups (close-X + recognized modals),
+            # so just retry.
+            log.info("Recovery: CODM foregrounded — retrying (hook handles load + popups)")
         log.info("Recovery: retrying navigation flow once")
         result = run_flow(
             device,
