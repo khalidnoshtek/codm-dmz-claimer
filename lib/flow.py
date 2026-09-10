@@ -230,19 +230,38 @@ def run_step(
             # few seconds later. Without this, today's bug recurs: daemon
             # taps 1 of 3, round 2 empty 4s later -> done, but card B's
             # timer expired 10s later and user has to claim manually.
-            MAX_ROUNDS = 8
+            MAX_ROUNDS = 12
             PATIENCE_ROUNDS = 3       # how many consecutive empty rounds before we give up
             PATIENCE_DELAY = 6.0      # seconds between empty rounds (long enough for a timer to tick over)
             total_tapped = 0
+            expected = 0              # best estimate of how many cards are claimable
             empty_streak = 0
+            clearing_backs = 0        # BACK presses used to clear a reward popup this blocked-phase
             for round_idx in range(1, MAX_ROUNDS + 1):
                 if round_idx > 1:
                     screen = device.screencap()
                 hits = find_all(screen, tpl_path, threshold=effective_threshold)
+                if hits:
+                    expected = max(expected, total_tapped + len(hits))
                 if not hits:
                     if round_idx == 1 and total_tapped == 0:
                         # Nothing to claim from the start — drop out fast
                         break
+                    # We've claimed at least one but see no badges. If MORE were
+                    # claimable (total_tapped < expected), CODM's "reward
+                    # obtained" popup is almost certainly covering the remaining
+                    # cards — the corner dismiss-tap doesn't always clear it.
+                    # BACK reliably closes CODM modals (and stays on LST Hunt),
+                    # so press BACK to reveal the rest, then re-scan fast. Cap
+                    # the clearing-BACKs per blocked-phase so we never walk out
+                    # of the LST Hunt page chasing a badge that isn't there.
+                    if total_tapped < expected and clearing_backs < (expected - total_tapped) + 1:
+                        clearing_backs += 1
+                        log.info("step %s: %d/%d claimed but no badges visible — BACK to clear reward popup (%d)",
+                                 step.name, total_tapped, expected, clearing_backs)
+                        device.back()
+                        time.sleep(1.4)
+                        continue
                     empty_streak += 1
                     log.info("step %s: round %d found no matches (empty_streak=%d/%d)",
                              step.name, round_idx, empty_streak, PATIENCE_ROUNDS)
@@ -252,6 +271,7 @@ def run_step(
                     time.sleep(PATIENCE_DELAY)
                     continue
                 empty_streak = 0  # reset patience counter when we find something
+                clearing_backs = 0  # badges are visible again -> reset the BACK budget
                 log.info("step %s: round %d found %d match(es) (scores=%s)",
                          step.name, round_idx, len(hits), [round(h.score, 3) for h in hits])
                 # Tap ONLY the first (highest-score) hit, then break out of
