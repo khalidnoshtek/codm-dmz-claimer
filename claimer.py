@@ -215,15 +215,30 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         if dry_run or step.name not in _dismiss_before:
             return
         try:
-            from lib.vision import find_all
-            for _ in range(3):
-                hits = find_all(device.screencap(), _close_x,
-                                threshold=float(cfg.get("match_threshold", 0.82)))
-                if not hits:
-                    break
-                log.info("pre-step popup dismiss: tapping close-X at (%d,%d)", hits[0].x, hits[0].y)
-                device.tap(hits[0].x, hits[0].y)
-                time.sleep(0.8)
+            from lib.vision import find_all, find_template
+            thr = float(cfg.get("match_threshold", 0.82))
+            tpl = TEMPLATES / step.template
+            for _ in range(6):
+                screen = device.screencap()
+                # Target screen is clear (this step's element is visible) -> no
+                # popup in the way, stop. This guard also makes the BACK path
+                # below safe: we only BACK while the target is NOT visible.
+                if step.template and find_template(screen, tpl, threshold=thr):
+                    return
+                # 1) Promo banners (battle-pass, event) have a top-right close X.
+                hits = find_all(screen, _close_x, threshold=thr)
+                if hits:
+                    log.info("popup dismiss: close-X at (%d,%d)", hits[0].x, hits[0].y)
+                    device.tap(hits[0].x, hits[0].y)
+                    time.sleep(0.9)
+                    continue
+                # 2) Modal dialogs (TIME LIMITED ITEM EXPIRED, DEVICE STORAGE,
+                #    announcements) have no X and are dismissed with BACK. CODM
+                #    stacks several, so we loop. BACK never confirms the "Quit?"
+                #    dialog (that needs a button tap), so this can't quit the game.
+                log.info("popup dismiss: no close-X and target not visible — pressing BACK")
+                device.back()
+                time.sleep(1.1)
         except Exception:
             pass
 
