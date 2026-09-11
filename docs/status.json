@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789085694,
+    "epoch": 1789091542,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "claims": 1,
@@ -11,9 +11,5 @@
       10.0
     ]
   },
-  "next_run": {
-    "epoch": 1789091540,
-    "source": "OCR (min cooldown 8297s, found 3/3) -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1789085694
+  "updated_at_epoch": 1789091542
 }
