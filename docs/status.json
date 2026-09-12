@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789200298,
+    "epoch": 1789202189,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
@@ -12,13 +12,9 @@
       4.6
     ]
   },
-  "next_run": {
-    "epoch": 1789202187,
-    "source": "OCR (min cooldown 2253s, found 3/3)"
-  },
   "diagnosis": {
     "epoch": 1789191968,
     "text": "DIAGNOSIS: A friend game-invite popup (from \"Co2Tyson67\") appeared over the LST HUNT screen while `tap_all_claims` was scanning; because `tap_all_claims` is not in `_dismiss_before`, the popup-dismiss hook never ran to close it \u2014 the popup covered the 3rd card's timer, causing OCR to find only 2/3 timers and triggering low-confidence sleep-cap scheduling (no reward was missed this cycle since all cards were locked, but a ready card under the popup would be unclaimed)."
   },
-  "updated_at_epoch": 1789200298
+  "updated_at_epoch": 1789202189
 }
