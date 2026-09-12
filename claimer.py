@@ -262,8 +262,20 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             thr = float(cfg.get("match_threshold", 0.82))
             tpl = TEMPLATES / step.template
             deadline = time.time() + _hook_budget.get(step.name, 8.0)
+            backs = 0          # cap generic BACKs so we can't spiral
             while time.time() < deadline:
                 screen = device.screencap()
+                txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
+                # 0) "Quit the game?" dialog — cancel it with BACK. This MUST be
+                #    checked before the target-visible guard below: the lobby (and
+                #    the DMZ tile) render straight through this dialog, so the
+                #    guard would think we're clear and the flow would tap into the
+                #    dialog. BACK cancels; we never tap OK.
+                if "QUIT THE GAME" in txt or "WANT TO QUIT" in txt:
+                    log.info("popup dismiss: quit dialog — cancelling with BACK")
+                    device.back()
+                    time.sleep(1.1)
+                    continue
                 # Target visible -> lobby/screen is ready and clear, stop.
                 if step.template and find_template(screen, tpl, threshold=thr):
                     return
@@ -274,8 +286,6 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     device.tap(hits[0].x, hits[0].y)
                     time.sleep(0.9)
                     continue
-                # OCR once for dialog keywords.
-                txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
                 # 2) Network-error dialog ("connection unstable" / "please check
                 #    your connection") — buttons are QUIT GAME (left) + RETRY
                 #    (right of the centered pair). Tap RETRY, NEVER quit. The
@@ -290,13 +300,15 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                 # 3) Any modal covering the lobby: if we can see lobby elements
                 #    (RANKED/MULTIPLAYER/...) but not the DMZ tile, a popup is on
                 #    top — WEB PURCHASE COMPLETE, EXPIRED item, DEVICE STORAGE,
-                #    events, announcements, etc. CODM modals close on BACK, and
-                #    BACK never confirms the Quit dialog, so this is safe and
-                #    generic (no per-popup keyword needed). Loop to clear a stack.
+                #    events, announcements, etc. CODM modals close on BACK.
+                #    Capped at 2: if the target still isn't matching after that,
+                #    it's more likely a borderline template match than a popup,
+                #    and further BACKs would just toggle the Quit dialog.
                 lobby_words = ("RANKED", "MULTIPLAYER", "BATTLE ROYALE", "LOADOUT",
                                "TOURNAMENT", "ZOMBIES", "DMZ")
-                if sum(1 for w in lobby_words if w in txt) >= 2:
-                    log.info("popup dismiss: modal over lobby — BACK to clear")
+                if sum(1 for w in lobby_words if w in txt) >= 2 and backs < 2:
+                    backs += 1
+                    log.info("popup dismiss: modal over lobby — BACK to clear (%d/2)", backs)
                     device.back()
                     time.sleep(1.3)
                     continue
