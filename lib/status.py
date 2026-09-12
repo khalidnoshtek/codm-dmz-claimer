@@ -84,7 +84,7 @@ def _result_line(summary: dict | None) -> tuple[bool, int, str]:
     ok = bool(summary.get("ok"))
     claims = summary.get("claims_attempted") or 0
     if not ok:
-        return ok, claims, f"FAILED at {summary.get('aborted_at') or 'unknown'}"
+        return ok, claims, "Failed"
     return ok, claims, (f"CLAIMED {claims}" if claims else "nothing claimable")
 
 
@@ -109,6 +109,7 @@ def record_run(summary: dict | None, repo_root: Path, retention_days: int = 7) -
             "epoch": int(time.time()),
             "ok": ok,
             "result": result,
+            "detail": (summary or {}).get("fail_detail"),  # plain-English failure cause
             "claims": claims,
             "cooldowns_hours": [round(s / 3600, 1) for s in cds],
         })

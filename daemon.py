@@ -34,7 +34,7 @@ def _result_text(summary: dict | None) -> str:
     if summary.get("reason") == "needs_login":
         return "NEEDS LOGIN"
     if not summary.get("ok"):
-        return f"FAILED at {summary.get('aborted_at') or 'unknown'}"
+        return "Failed"
     claimed = summary.get("claims_attempted") or 0
     return f"CLAIMED {claimed} reward(s)" if claimed else "nothing claimable"
 
@@ -52,6 +52,7 @@ def _publish(cfg: dict, state: str, *, summary: dict | None = None,
             "epoch": int(time.time()),
             "ok": bool(summary.get("ok")),
             "result": _result_text(summary),
+            "detail": summary.get("fail_detail"),  # why it failed, in plain English
             "claims": summary.get("claims_attempted") or 0,
             "cooldowns_hours": [round(s / 3600, 1) for s in cds],
         }

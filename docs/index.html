@@ -129,6 +129,8 @@
   .run .rmain{flex:1;min-width:0}
   .run .rres{font-weight:600;font-size:13.5px}
   .run .rtime{color:var(--faint);font-size:11.5px;margin-top:1px}
+  .run.fail .rtime,.run.login .rtime{color:var(--amber)}
+  .detail-line{color:var(--amber);font-size:12.5px;line-height:1.45;padding:6px 0 2px}
   .run .rcd{font-family:var(--disp);font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
   footer{margin-top:18px;text-align:center;color:var(--faint);font-size:11.5px;line-height:1.7}
   .mut{color:var(--muted)}
@@ -194,6 +196,7 @@
 
 <script>
 const $=id=>document.getElementById(id), pad=n=>String(n).padStart(2,'0');
+const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function icons(){ try{ lucide.createIcons(); }catch(e){} }
 function fmtDur(s){s=Math.max(0,Math.floor(s));const h=(s/3600|0),m=(s%3600/60|0),x=s%60;return pad(h)+':'+pad(m)+':'+pad(x);}
 function fmtClock(e){const d=new Date(e*1000);return d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+' · '+d.toLocaleDateString([],{month:'short',day:'numeric'});}
@@ -217,6 +220,8 @@ function render(){
     $('lastWhen').textContent=fmtClock(lr.epoch)+' ('+ago(lr.epoch)+')';
     const cds=lr.cooldowns_hours||[];
     $('lastCds').innerHTML=cds.length?cds.map(h=>'<span class="cd">'+h+'h</span>').join(''):'<span class="mut">—</span>';
+    const dt=$('lastDetail');
+    if(dt){ if(!lr.ok && lr.detail){ dt.textContent='⚠ '+lr.detail; dt.hidden=false; } else dt.hidden=true; }
   }
   $('nextAt').textContent=data.next_run?fmtClock(data.next_run.epoch):'—';
   $('nextSrc').textContent=data.next_run&&data.next_run.source?data.next_run.source:'—';
@@ -257,9 +262,11 @@ function renderHistory(h){
     const isLogin=r.result==='NEEDS LOGIN';
     const cls=isLogin?'login':(!r.ok?'fail':(r.claims>0?'ok':'none'));
     const ic={ok:'gift',none:'hourglass',fail:'alert-triangle',login:'log-in'}[cls];
-    const label=isLogin?'Needs login':(!r.ok?(r.result||'Failed'):(r.claims>0?('Claimed '+r.claims):'Nothing to claim'));
+    const label=isLogin?'Needs login':(!r.ok?'Failed':(r.claims>0?('Claimed '+r.claims):'Nothing to claim'));
     const cd=(r.cooldowns_hours||[]).length?r.cooldowns_hours.map(x=>x+'h').join(' '):'';
-    return `<div class="run ${cls}"><div class="ric"><i data-lucide="${ic}" class="i"></i></div><div class="rmain"><div class="rres">${label}</div><div class="rtime">${fmtClock(r.epoch)}</div></div><div class="rcd">${cd}</div></div>`;
+    const t=new Date((r.epoch||0)*1000).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    const sub=(!r.ok && r.detail)?(esc(r.detail)+' · '+t):t;
+    return `<div class="run ${cls}"><div class="ric"><i data-lucide="${ic}" class="i"></i></div><div class="rmain"><div class="rres">${label}</div><div class="rtime">${sub}</div></div><div class="rcd">${cd}</div></div>`;
   }).join('');
   $('runs').innerHTML=rows||'<span class="mut">no runs yet</span>';
   icons();
@@ -313,6 +320,7 @@ document.querySelectorAll('.chip[data-adj]').forEach(b=>b.addEventListener('clic
   const c=document.createElement('section');c.className='card';
   c.innerHTML=`<h3><i data-lucide="receipt-text" class="i"></i> Details</h3>
     <div class="row"><span class="k"><i data-lucide="gift" class="i"></i>Last result</span><span class="v" id="lastResult">—</span></div>
+    <div id="lastDetail" class="detail-line" hidden></div>
     <div class="row"><span class="k"><i data-lucide="clock-4" class="i"></i>Last run</span><span class="v" id="lastWhen">—</span></div>
     <div class="row"><span class="k"><i data-lucide="timer" class="i"></i>Cooldowns</span><span class="v"><span class="cds" id="lastCds">—</span></span></div>
     <div class="row"><span class="k"><i data-lucide="calendar-clock" class="i"></i>Next run</span><span class="v" id="nextAt">—</span></div>
