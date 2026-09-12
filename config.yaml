@@ -102,6 +102,13 @@ publish_status_push: true
 trigger_enabled: true
 trigger_poll_seconds: 45
 
+# Self-healing: how many times a single cycle retries before giving up until the
+# next scheduled wake. After each failed attempt the daemon clean-boots the AVD
+# (kills the emulator so the next try cold-boots fresh) — recovers transient
+# issues (SystemUI ANR, stuck/slow launch, blocking popup, network blip)
+# without waiting a whole sleep period. needs-login failures are NOT retried.
+cycle_max_attempts: 3
+
 # Rolling run history (docs/history.json) for the dashboard: how many claims
 # per week, recent results, cooldowns. Runs older than this many days are
 # purged each cycle.

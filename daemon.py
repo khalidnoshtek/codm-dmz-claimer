@@ -14,6 +14,7 @@ from __future__ import annotations
 import logging
 import random
 import signal
+import subprocess
 import sys
 import time
 import traceback
@@ -21,8 +22,26 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from claimer import claim_once, load_config, setup_logging
+from lib.adb import AdbDevice, LOCKED_AVD
 from lib.wake import schedule_wake, cancel_wakes
 from lib.status import publish_status, read_remote_control, record_run
+
+
+def _clean_boot_reset() -> None:
+    """Kill the locked AVD so the next attempt cold-boots a fresh, healthy
+    emulator. Recovers from a wedged state (SystemUI ANR, stuck launch) that a
+    warm reuse or in-app retry can't fix. Best-effort; waits for the port to
+    free before the next launch."""
+    log = logging.getLogger("daemon")
+    try:
+        for d in AdbDevice.list_devices():
+            if d.startswith("emulator-") and AdbDevice.emulator_avd_name(d) == LOCKED_AVD:
+                subprocess.run(["adb", "-s", d, "emu", "kill"],
+                               check=False, capture_output=True, timeout=10)
+                log.info("clean-boot reset: killed %s", d)
+    except Exception as e:
+        log.warning("clean-boot reset failed: %s", e)
+    time.sleep(8)
 
 ROOT = Path(__file__).resolve().parent
 
@@ -93,20 +112,39 @@ def loop_forever() -> int:
         # result so it stays visible while this one runs).
         _publish(cfg, "running", summary=prev_summary)
 
+        # Self-healing: try the cycle up to cycle_max_attempts. On failure,
+        # clean-boot the AVD (fresh emulator) and retry — recovers transient
+        # issues (SystemUI ANR, slow/stuck cold launch, a blocking popup, a
+        # network blip) without waiting a whole sleep period. We do NOT retry a
+        # needs-login failure — that needs a manual sign-in, and churning the
+        # AVD would just ANR it.
         summary = None  # bound even if claim_once throws (used below + in _publish)
-        try:
-            log.info("--- Cycle start ---")
-            summary = claim_once(cfg)
-            if summary["ok"]:
+        max_attempts = max(1, int(cfg.get("cycle_max_attempts", 3)))
+        for attempt in range(1, max_attempts + 1):
+            try:
+                log.info("--- Cycle start (attempt %d/%d) ---", attempt, max_attempts)
+                summary = claim_once(cfg)
+            except Exception as e:
+                log.error("Cycle threw: %s\n%s", e, traceback.format_exc())
+                summary = None
+            if isinstance(summary, dict) and summary.get("ok"):
                 consecutive_failures = 0
                 log.info("Cycle ok — claims_attempted=%s", summary.get("claims_attempted"))
+                break
+            reason = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
+            if isinstance(summary, dict) and summary.get("reason") == "needs_login":
+                consecutive_failures += 1
+                log.warning("Needs login — manual sign-in required, not retrying")
+                break
+            if attempt < max_attempts and not _stopping:
+                log.warning("Attempt %d/%d failed (%s) — clean-booting AVD and retrying",
+                            attempt, max_attempts, reason)
+                _publish(cfg, "running", summary=prev_summary)
+                _clean_boot_reset()
             else:
                 consecutive_failures += 1
-                log.warning("Cycle aborted at %s: %s (consecutive_failures=%d)",
-                            summary.get("aborted_at"), summary.get("abort_reason"), consecutive_failures)
-        except Exception as e:
-            consecutive_failures += 1
-            log.error("Cycle threw: %s\n%s", e, traceback.format_exc())
+                log.warning("Cycle failed after %d attempt(s): %s (consecutive_failures=%d)",
+                            attempt, reason, consecutive_failures)
 
         if _stopping:
             break
