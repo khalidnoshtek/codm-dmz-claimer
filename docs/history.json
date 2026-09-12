@@ -653,5 +653,13 @@
     "detail": null,
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789189204,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
