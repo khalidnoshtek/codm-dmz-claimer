@@ -27,6 +27,60 @@ from lib.wake import schedule_wake, cancel_wakes
 from lib.status import publish_status, read_remote_control, record_run
 
 
+def _auto_diagnose(cfg: dict, summary: dict | None) -> str | None:
+    """After a cycle fully fails (all retries), optionally invoke Claude Code
+    headlessly to look at the failure screenshot + logs and diagnose (and, if
+    auto_diagnose_apply_fixes is on, fix) the problem. Rate-limited and
+    best-effort. Returns a short note for the dashboard, or None."""
+    import shutil
+    if not bool(cfg.get("auto_diagnose_on_failure", True)):
+        return None
+    claude = shutil.which("claude")
+    if not claude:
+        return None
+    log = logging.getLogger("daemon")
+    marker = ROOT / "logs" / ".last_diagnose"
+    cooldown = float(cfg.get("auto_diagnose_cooldown_hours", 6)) * 3600
+    try:
+        if marker.exists() and (time.time() - marker.stat().st_mtime) < cooldown:
+            return None  # already diagnosed recently — don't spam / burn tokens
+    except Exception:
+        pass
+
+    detail = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
+    shot = (summary or {}).get("final_screenshot") or "(none)"
+    try:
+        logtail = "\n".join((ROOT / "logs" / "claimer.log").read_text(errors="ignore").splitlines()[-60:])
+    except Exception:
+        logtail = "(log unavailable)"
+    # REPORT-ONLY: Claude reads the screenshot + logs and writes a diagnosis.
+    # It is NOT given autonomous edit/commit powers (no skip-permissions) — an
+    # unattended daemon rewriting its own live code is unsafe. Actual fixes stay
+    # a reviewed, manual step (read logs/diagnosis-*.txt, then apply).
+    prompt = (
+        "You are maintaining the CODM DMZ auto-claimer in this repo. Its daemon just failed a "
+        f"full claim cycle after all retries. Reported reason: '{detail}'. A screenshot of the "
+        f"stuck screen is at: {shot} (open it with Read). Investigate (read the screenshot and "
+        "relevant code) and write a concise diagnosis + the specific fix you'd suggest. Do NOT "
+        "edit code.\n\nRecent daemon log tail:\n" + logtail + "\n\n"
+        "End with one line starting 'DIAGNOSIS: ' summarizing the root cause."
+    )
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    out = ROOT / "logs" / f"diagnosis-{ts}.txt"
+    try:
+        with out.open("w") as f:
+            subprocess.Popen([claude, "-p", prompt, "--model", "sonnet"],
+                             cwd=str(ROOT), stdout=f, stderr=subprocess.STDOUT,
+                             start_new_session=True)
+        marker.parent.mkdir(exist_ok=True)
+        marker.touch()
+        log.info("auto-diagnose: launched Claude Code (report-only) -> %s", out.name)
+        return f"auto-diagnosis (report) running — see logs/{out.name}"
+    except Exception as e:
+        log.warning("auto-diagnose failed to launch: %s", e)
+        return None
+
+
 def _clean_boot_reset() -> None:
     """Kill the locked AVD so the next attempt cold-boots a fresh, healthy
     emulator. Recovers from a wedged state (SystemUI ANR, stuck launch) that a
@@ -148,6 +202,13 @@ def loop_forever() -> int:
 
         if _stopping:
             break
+
+        # Cycle fully failed (all retries) and it's not a needs-login case ->
+        # optionally call Claude Code to look at the screenshot + logs and
+        # diagnose/fix. Rate-limited inside _auto_diagnose.
+        if not (isinstance(summary, dict) and summary.get("ok")) \
+                and not (isinstance(summary, dict) and summary.get("reason") == "needs_login"):
+            _auto_diagnose(cfg, summary)
 
         # Back off a bit on repeated failures so we don't hammer a broken AVD.
         backoff = min(consecutive_failures, 4) * 300  # +5min per fail, capped at +20min

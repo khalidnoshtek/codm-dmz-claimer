@@ -109,6 +109,15 @@ trigger_poll_seconds: 45
 # without waiting a whole sleep period. needs-login failures are NOT retried.
 cycle_max_attempts: 3
 
+# Escalation: after a cycle fully fails (all attempts), call Claude Code
+# headlessly to look at the failure screenshot + logs and diagnose what's wrong.
+# Rate-limited to once per auto_diagnose_cooldown_hours (avoids token/cost spam).
+# REPORT-ONLY by design: it writes a diagnosis to logs/diagnosis-*.txt and does
+# NOT edit code (an unattended daemon rewriting its own live code is unsafe).
+# Read the diagnosis, then apply the fix as a reviewed step.
+auto_diagnose_on_failure: true
+auto_diagnose_cooldown_hours: 6
+
 # Rolling run history (docs/history.json) for the dashboard: how many claims
 # per week, recent results, cooldowns. Runs older than this many days are
 # purged each cycle.
