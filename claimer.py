@@ -71,6 +71,36 @@ def _on_login_screen(device) -> bool:
         return False
 
 
+def _classify_failure(device, pkg: str) -> str:
+    """Human-readable reason the flow couldn't reach the claim screen, by
+    inspecting whatever CODM is actually showing when it gave up. Turns the
+    useless generic 'dmz_lobby_check not found' into something actionable."""
+    try:
+        if not device.is_app_foreground(pkg):
+            return "CODM crashed / closed (not in foreground)"
+        import cv2
+        import pytesseract
+        txt = pytesseract.image_to_string(
+            cv2.cvtColor(device.screencap(), cv2.COLOR_BGR2GRAY)).upper()
+    except Exception:
+        return "couldn't reach the DMZ lobby (screen unreadable)"
+    if any(k in txt for k in ("LOGIN NOW", "PASSWORD", "ACTIVISION ACCOUNT", "FORGOT YOUR")):
+        return "needs login — sign in to CODM (Activision account)"
+    if "UNSTABLE" in txt or "CHECK YOUR CONNECTION" in txt or "NETWORK" in txt:
+        return "CODM network error during load (connection unstable)"
+    if "EXPIRED" in txt:
+        return "blocked by a 'time-limited item expired' popup"
+    if "STORAGE" in txt:
+        return "blocked by a 'device storage' popup"
+    if "UPDATE" in txt or "DOWNLOAD" in txt:
+        return "CODM wants to update/download resources"
+    # Mostly-empty splash = the logo with little else -> stuck connecting.
+    words = txt.split()
+    if "CALL" in txt and "DUTY" in txt and len(words) < 16:
+        return "stuck on CODM loading screen — likely needs an app update (open the AVD via scrcpy, update in Play Store)"
+    return "reached CODM but couldn't find the DMZ lobby (unexpected screen or slow load)"
+
+
 def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     """Run the claim flow once. Returns a summary dict that's also written
     to logs/<timestamp>_summary.json."""
@@ -211,13 +241,6 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     _close_x = TEMPLATES / "10_popup_close_x.png"
     _dismiss_before = {"tap_home_icon", "enter_dmz_mode", "dmz_lobby_check", "tap_black_market"}
 
-    # Known modal-dialog phrases (no close-X; dismissed by a single BACK). We
-    # only ever press BACK when one of these is actually on screen — blind BACK
-    # walks straight out of CODM to the Android home screen.
-    _modal_words = ("EXPIRED", "DEVICE STORAGE", "STORAGE SPACE", "REMOVE UNUSED",
-                    "LIMITED ITEM", "NOT ENOUGH", "MAINTENANCE", "ANNOUNCEMENT",
-                    "INSUFFICIENT")
-
     # How long each step's hook will WAIT for its target to appear while
     # dismissing popups. enter_dmz_mode gets the big budget because the lobby
     # takes ~40s to render after login ("Getting Version Info"); rushing past
@@ -260,18 +283,22 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     device.tap(1770, 953)
                     time.sleep(2.5)
                     continue
-                # 3) Modal dialogs (EXPIRED items, DEVICE STORAGE, announcements)
-                #    have no X and are dismissed with a single BACK. Only BACK
-                #    when we actually SEE such a dialog — never blindly, or the
-                #    BACK cascade walks out of CODM to the Android home screen.
-                if any(w in txt for w in _modal_words):
-                    log.info("popup dismiss: modal dialog detected — BACK once")
+                # 3) Any modal covering the lobby: if we can see lobby elements
+                #    (RANKED/MULTIPLAYER/...) but not the DMZ tile, a popup is on
+                #    top — WEB PURCHASE COMPLETE, EXPIRED item, DEVICE STORAGE,
+                #    events, announcements, etc. CODM modals close on BACK, and
+                #    BACK never confirms the Quit dialog, so this is safe and
+                #    generic (no per-popup keyword needed). Loop to clear a stack.
+                lobby_words = ("RANKED", "MULTIPLAYER", "BATTLE ROYALE", "LOADOUT",
+                               "TOURNAMENT", "ZOMBIES", "DMZ")
+                if sum(1 for w in lobby_words if w in txt) >= 2:
+                    log.info("popup dismiss: modal over lobby — BACK to clear")
                     device.back()
                     time.sleep(1.3)
                     continue
-                # Nothing to dismiss yet — the screen is probably still loading
-                # (lobby not rendered). Wait and re-check until the budget runs out.
-                time.sleep(1.5)
+                # Otherwise it's the login/loading splash still connecting — do
+                # NOT press BACK (that would walk out of CODM); just wait.
+                time.sleep(1.8)
         except Exception:
             pass
 
@@ -393,6 +420,13 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             device.back()
             time.sleep(0.8)
 
+    # On failure, work out WHY (login form / stuck loading / network / popup /
+    # crash) so the status + dashboard show something actionable, not just
+    # "dmz_lobby_check not found".
+    fail_detail = None
+    if not result.ok() and not dry_run:
+        fail_detail = _classify_failure(device, pkg)
+
     summary = {
         "ok": result.ok(),
         "stamp": stamp,
@@ -401,6 +435,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         "steps_skipped": result.steps_skipped,
         "aborted_at": result.aborted_at,
         "abort_reason": result.abort_reason,
+        "fail_detail": fail_detail,
         "final_screenshot": str(final_path) if final_path.exists() else None,
         "cooldowns_seconds": cooldowns_seconds,  # remaining seconds per card that's locked
         "min_cooldown_seconds": min(cooldowns_seconds) if cooldowns_seconds else None,
@@ -410,7 +445,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
 
     # One-line human-readable summary for the user-facing status log.
     if not summary.get("ok"):
-        msg = f"FAILED at {summary.get('aborted_at') or 'unknown'} — {summary.get('abort_reason') or ''}"
+        msg = f"FAILED: {fail_detail or (summary.get('aborted_at') or 'unknown')}"
     else:
         claimed = summary.get("claims_attempted") or 0
         cds = summary.get("cooldowns_seconds") or []
