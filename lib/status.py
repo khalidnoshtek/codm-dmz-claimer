@@ -129,7 +129,7 @@ def read_remote_control(repo_root: Path) -> dict:
     git rather than the raw CDN URL so the values are fresh (no ~5-min Fastly
     cache) and unauthenticated-rate-limit free. Also advances the origin/main
     tracking ref, so the next status push rebases cleanly onto any button commit."""
-    _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0}
+    _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0, "fix_requested_at": 0}
     try:
         f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
         if f.returncode != 0:
@@ -142,6 +142,7 @@ def read_remote_control(repo_root: Path) -> dict:
             "requested_at": int(d.get("requested_at", 0) or 0),
             "delay_until": int(d.get("delay_until", 0) or 0),
             "run_at": int(d.get("run_at", 0) or 0),
+            "fix_requested_at": int(d.get("fix_requested_at", 0) or 0),
         }
     except Exception:
         return {"requested_at": 0, "delay_until": 0, "run_at": 0}

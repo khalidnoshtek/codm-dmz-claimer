@@ -27,6 +27,75 @@ from lib.wake import schedule_wake, cancel_wakes
 from lib.status import publish_status, read_remote_control, record_run
 
 
+_last_diagnosis: dict | None = None  # {"epoch": int, "text": str} shown on the dashboard
+
+
+def _diagnosis_prompt(summary: dict | None, extra: str = "") -> str:
+    """Context bundle for Claude: what failed, the stuck screenshot, recent log."""
+    detail = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
+    shot = (summary or {}).get("final_screenshot")
+    if not shot:
+        try:
+            shots = sorted((ROOT / "logs").glob("*_final.png"), key=lambda p: p.stat().st_mtime)
+            shot = str(shots[-1]) if shots else "(none)"
+        except Exception:
+            shot = "(none)"
+    try:
+        logtail = "\n".join((ROOT / "logs" / "claimer.log").read_text(errors="ignore").splitlines()[-60:])
+    except Exception:
+        logtail = "(log unavailable)"
+    try:
+        statustail = "\n".join((ROOT / "logs" / "status.log").read_text(errors="ignore").splitlines()[-15:])
+    except Exception:
+        statustail = ""
+    return (
+        "You are maintaining the CODM DMZ auto-claimer in this repo (claimer.py drives an Android "
+        "AVD through CODM to claim DMZ LST Hunt rewards). " + extra +
+        f"\nMost recent failure reason: '{detail}'.\n"
+        f"Screenshot of the stuck screen: {shot} (open it with Read).\n\n"
+        "Investigate: read the screenshot and the relevant code (claimer.py popup hook, "
+        "lib/flow.py steps). Identify what is actually blocking it and the specific fix. "
+        "Do NOT edit code.\n\n"
+        f"Recent status log:\n{statustail}\n\nRecent daemon log tail:\n{logtail}\n\n"
+        "End with one line starting 'DIAGNOSIS: ' summarizing the root cause in plain English."
+    )
+
+
+def _run_diagnosis_sync(cfg: dict, summary: dict | None) -> str | None:
+    """On-demand (dashboard button): run Claude Code's analysis and return the
+    diagnosis text so it can be shown on the dashboard. Report-only."""
+    import shutil
+    global _last_diagnosis
+    claude = shutil.which("claude")
+    log = logging.getLogger("daemon")
+    if not claude:
+        _last_diagnosis = {"epoch": int(time.time()), "text": "claude CLI not found on PATH"}
+        return None
+    prompt = _diagnosis_prompt(summary, extra="The user pressed 'Analyze via Claude' on the dashboard. ")
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    out = ROOT / "logs" / f"diagnosis-{ts}.txt"
+    log.info("on-demand diagnosis: running Claude Code (report-only)...")
+    try:
+        r = subprocess.run([claude, "-p", prompt, "--model", "sonnet"], cwd=str(ROOT),
+                           capture_output=True, text=True,
+                           timeout=float(cfg.get("diagnose_timeout_seconds", 420)))
+        text = (r.stdout or "").strip() or (r.stderr or "").strip()
+    except subprocess.TimeoutExpired:
+        text = "analysis timed out"
+    except Exception as e:
+        text = f"analysis failed: {e}"
+    try:
+        out.write_text(text)
+    except Exception:
+        pass
+    # Prefer the explicit DIAGNOSIS line; else the tail of the reply.
+    line = next((l for l in reversed(text.splitlines()) if l.strip().upper().startswith("DIAGNOSIS:")), "")
+    short = (line.strip() or text.strip()[-400:]) or "no output"
+    _last_diagnosis = {"epoch": int(time.time()), "text": short[:600]}
+    log.info("on-demand diagnosis complete -> %s", out.name)
+    return short
+
+
 def _auto_diagnose(cfg: dict, summary: dict | None) -> str | None:
     """After a cycle fully fails (all retries), optionally invoke Claude Code
     headlessly to look at the failure screenshot + logs and diagnose (and, if
@@ -131,6 +200,8 @@ def _publish(cfg: dict, state: str, *, summary: dict | None = None,
         }
     if wake_at is not None:
         status["next_run"] = {"epoch": int(wake_at), "source": source or ""}
+    if _last_diagnosis:
+        status["diagnosis"] = _last_diagnosis
     publish_status(status, ROOT, push=bool(cfg.get("publish_status_push", True)))
 
 
@@ -157,6 +228,7 @@ def loop_forever() -> int:
     last_trigger = _ctl0["requested_at"]
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
+    last_fix_at = _ctl0.get("fix_requested_at", 0)
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
@@ -309,6 +381,16 @@ def loop_forever() -> int:
             if trigger_enabled and now - last_poll >= trigger_poll:
                 last_poll = now
                 ctl = read_remote_control(ROOT)
+                # "Analyze via Claude" button: run the diagnosis now and publish
+                # the result so it shows on the dashboard. Report-only.
+                if ctl.get("fix_requested_at", 0) > last_fix_at:
+                    last_fix_at = ctl["fix_requested_at"]
+                    log.info("Dashboard requested a Claude analysis — running now")
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    _run_diagnosis_sync(cfg, summary)
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    last_poll = time.time()
+                    continue
                 if ctl["requested_at"] > last_trigger:
                     last_trigger = ctl["requested_at"]
                     log.info("Manual trigger received (requested_at=%d) — running a cycle now",

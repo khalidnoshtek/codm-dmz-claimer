@@ -131,6 +131,11 @@
   .run .rtime{color:var(--faint);font-size:11.5px;margin-top:1px}
   .run.fail .rtime,.run.login .rtime{color:var(--amber)}
   .detail-line{color:var(--amber);font-size:12.5px;line-height:1.45;padding:6px 0 2px}
+  .btn.fixbtn{flex-basis:100%;width:100%;color:var(--violet);background:rgba(167,139,250,.12);border-color:rgba(167,139,250,.3)}
+  .btn.fixbtn:hover{background:rgba(167,139,250,.2)}
+  .diag{white-space:pre-wrap;font-size:12.5px;line-height:1.5;color:var(--txt);
+    background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+  .diag .when{display:block;color:var(--faint);font-size:11px;margin-top:8px}
   .run .rcd{font-family:var(--disp);font-size:11px;color:var(--muted);text-align:right;white-space:nowrap}
   footer{margin-top:18px;text-align:center;color:var(--faint);font-size:11.5px;line-height:1.7}
   .mut{color:var(--muted)}
@@ -167,12 +172,22 @@
       <button class="btn chip ready" id="readyBtn"><i data-lucide="target" class="i"></i> Run when first reward is ready</button>
     </div>
 
+    <div class="seg">
+      <div class="lbl"><i data-lucide="wrench" class="i"></i> Something wrong?</div>
+      <button class="btn chip fixbtn" id="fixBtn"><i data-lucide="sparkles" class="i"></i> Analyze via Claude</button>
+    </div>
+
     <div class="msg" id="msg"></div>
     <div class="tokbar">
       <i data-lucide="key-round" class="i"></i>
       <span id="tokState">no access token</span>
       <button id="tokBtn">set token</button>
     </div>
+  </section>
+
+  <section class="card" id="diagCard" hidden>
+    <h3><i data-lucide="sparkles" class="i"></i> Claude's analysis</h3>
+    <div class="diag" id="diagText">—</div>
   </section>
 
   <section class="card">
@@ -225,6 +240,11 @@ function render(){
   }
   $('nextAt').textContent=data.next_run?fmtClock(data.next_run.epoch):'—';
   $('nextSrc').textContent=data.next_run&&data.next_run.source?data.next_run.source:'—';
+  const dg=data.diagnosis;
+  if(dg&&dg.text){
+    $('diagCard').hidden=false;
+    $('diagText').innerHTML=esc(dg.text)+'<span class="when">analysed '+ago(dg.epoch)+'</span>';
+  } else $('diagCard').hidden=true;
   tick();icons();
 }
 function tick(){
@@ -290,7 +310,7 @@ async function write(patch,okMsg){
     const g=await fetch(API+'?ref=main&t='+Date.now(),{headers:H,cache:'no-store'});
     if(g.status===401||g.status===403){msg('Token invalid/expired or missing Contents:write.','err');return false;}
     const gj=await g.json();let cur={};try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
-    const body={requested_at:0,delay_until:0,run_at:0,...cur,...patch};
+    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,...cur,...patch};
     const p=await fetch(API,{method:'PUT',headers:H,body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(body,null,2)+'\n'),sha:gj.sha,branch:'main'})});
     if(p.ok){msg(okMsg,'ok');return true;}
     const pj=await p.json().catch(()=>({}));msg('Failed: '+(pj.message||('HTTP '+p.status)),'err');return false;
@@ -310,6 +330,19 @@ async function runWhenReady(){
   if(at<now+60)at=now+60; pendingAt=at;
   await write({run_at:at},'Set to run when first reward unlocks (~'+fmtClock(at)+').');
 }
+async function askClaude(){
+  const b=$('fixBtn'); b.disabled=true;
+  const ok=await write({fix_requested_at:Date.now()/1000|0},
+    'Claude is analysing — result appears below in ~1-3 min.');
+  if(ok){ // poll a bit longer than a normal action: the analysis takes minutes
+    const end=Date.now()+360000;
+    const t=setInterval(async()=>{ await load();
+      if(data&&data.diagnosis&&(Date.now()/1000|0)-data.diagnosis.epoch<300){ msg('Analysis ready — see below.','ok'); clearInterval(t); b.disabled=false; }
+      if(Date.now()>end){ clearInterval(t); b.disabled=false; }
+    },10000);
+  } else b.disabled=false;
+}
+$('fixBtn').addEventListener('click',askClaude);
 $('runBtn').addEventListener('click',runNow);
 $('tokBtn').addEventListener('click',setTok);
 $('readyBtn').addEventListener('click',runWhenReady);
