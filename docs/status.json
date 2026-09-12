@@ -1,16 +1,4 @@
 {
-  "state": "sleeping",
-  "last_run": {
-    "epoch": 1789188670,
-    "ok": false,
-    "result": "Failed",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  "next_run": {
-    "epoch": 1789194615,
-    "source": "config period -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1789188670
+  "state": "running",
+  "updated_at_epoch": 1789189110
 }
