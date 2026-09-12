@@ -119,7 +119,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         )
     except Exception as e:
         log.error("Could not start/find locked AVD %s: %s", LOCKED_AVD, e)
-        return {"ok": False, "reason": "avd_not_running", "target_avd": LOCKED_AVD, "error": str(e)}
+        return {"ok": False, "reason": "avd_not_running",
+                "fail_detail": "the AVD (emulator) wouldn't start", "target_avd": LOCKED_AVD, "error": str(e)}
 
     device = AdbDevice.auto()
     log.info("ADB device: %s (dry_run=%s)", device.serial, dry_run)
@@ -143,7 +144,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     if lock_cfg.get("enabled"):
         if not device.ensure_unlocked(lock_cfg):
             log.error("Could not get past the lock screen — aborting cycle")
-            return {"ok": False, "reason": "lockscreen", "target_avd": LOCKED_AVD}
+            return {"ok": False, "reason": "lockscreen",
+                    "fail_detail": "couldn't get past the AVD lock screen", "target_avd": LOCKED_AVD}
 
     pkg = cfg["package"]
     activity = cfg.get("activity") or None
@@ -182,7 +184,9 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                 break
         if not succeeded:
             log.error("App %s failed to stay foregrounded after %d cold-launch attempts", pkg, max_attempts)
-            return {"ok": False, "reason": "app_unstable_on_cold_launch", "package": pkg, "attempts": max_attempts}
+            return {"ok": False, "reason": "app_unstable_on_cold_launch",
+                    "fail_detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
+                    "package": pkg, "attempts": max_attempts}
     else:
         log.info("App %s already foregrounded (warm)", pkg)
         time.sleep(float(cfg.get("screen_settle_seconds", 2.5)) * 2)
