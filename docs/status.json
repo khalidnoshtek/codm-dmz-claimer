@@ -1,16 +1,4 @@
 {
-  "state": "sleeping",
-  "last_run": {
-    "epoch": 1789189204,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  "next_run": {
-    "epoch": 1789195239,
-    "source": "config period -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1789189204
+  "state": "running",
+  "updated_at_epoch": 1789189956
 }
