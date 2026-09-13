@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1789327700,
-    "ok": true,
-    "result": "CLAIMED 1 reward(s)",
-    "detail": null,
-    "claims": 1,
+    "epoch": 1789328488,
+    "ok": false,
+    "result": "Failed",
+    "detail": "the AVD (emulator) wouldn't start",
+    "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1789327700
+  "next_run": {
+    "epoch": 1789334193,
+    "source": "config period -> capped at max_sleep_seconds"
+  },
+  "updated_at_epoch": 1789328488
 }
