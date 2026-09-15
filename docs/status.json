@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789470018,
+    "epoch": 1789470023,
     "ok": false,
     "result": "Failed",
     "detail": "CODM crashed / closed (not in foreground)",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1789475327,
-    "source": "config period -> capped at max_sleep_seconds"
-  },
-  "updated_at_epoch": 1789470018
+  "updated_at_epoch": 1789470023
 }
