@@ -263,6 +263,19 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             tpl = TEMPLATES / step.template
             deadline = time.time() + _hook_budget.get(step.name, 8.0)
             backs = 0          # cap generic BACKs so we can't spiral
+
+            def _quit_dialog_up(img) -> bool:
+                """True if the 'Are you sure you want to quit the game?' dialog
+                is on screen. Full-frame OCR misses this roughly half the time
+                (the title is tiny against a 3120x1440 frame, and the lobby
+                shows through behind it), which used to leave the dialog up and
+                block every later step. Cropping to the dialog's title band and
+                upscaling 2x makes detection reliable."""
+                h, w = img.shape[:2]
+                band = img[int(h * 0.16):int(h * 0.27), int(w * 0.15):int(w * 0.85)]
+                band = _cv2.resize(band, None, fx=2, fy=2, interpolation=_cv2.INTER_CUBIC)
+                t = _pt.image_to_string(_cv2.cvtColor(band, _cv2.COLOR_BGR2GRAY)).upper()
+                return "QUIT THE GAME" in t or "WANT TO QUIT" in t
             while time.time() < deadline:
                 screen = device.screencap()
                 txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
@@ -271,7 +284,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                 #    the DMZ tile) render straight through this dialog, so the
                 #    guard would think we're clear and the flow would tap into the
                 #    dialog. BACK cancels; we never tap OK.
-                if "QUIT THE GAME" in txt or "WANT TO QUIT" in txt:
+                if _quit_dialog_up(screen):
                     log.info("popup dismiss: quit dialog — cancelling with BACK")
                     device.back()
                     time.sleep(1.1)
@@ -311,6 +324,21 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     log.info("popup dismiss: modal over lobby — BACK to clear (%d/2)", backs)
                     device.back()
                     time.sleep(1.3)
+                    # A clean lobby looks identical to "modal over lobby" here:
+                    # both show >=2 lobby words, and the DMZ tile can miss the
+                    # template for unrelated reasons (e.g. the lobby is on BR
+                    # RANKED). The difference only shows AFTER the BACK: on a
+                    # clean lobby BACK has nothing to close, so CODM opens the
+                    # quit dialog instead. Treat that as proof there was no
+                    # modal — cancel it and stop pressing BACK, rather than
+                    # ping-ponging the dialog open/closed for the rest of the
+                    # budget (which is what stalled dmz_lobby_check).
+                    if _quit_dialog_up(device.screencap()):
+                        log.info("popup dismiss: BACK opened the quit dialog — "
+                                 "lobby was already clear; cancelling and waiting")
+                        device.back()
+                        backs = 99          # disable further generic BACKs
+                        time.sleep(1.1)
                     continue
                 # Otherwise it's the login/loading splash still connecting — do
                 # NOT press BACK (that would walk out of CODM); just wait.
