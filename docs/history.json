@@ -1,12 +1,5 @@
 [
   {
-    "epoch": 1788861722,
-    "ok": true,
-    "result": "CLAIMED 3",
-    "claims": 3,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1788867258,
     "ok": false,
     "result": "FAILED at dmz_lobby_check",
@@ -993,5 +986,13 @@
       0.6,
       3.0
     ]
+  },
+  {
+    "epoch": 1789470018,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM crashed / closed (not in foreground)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
