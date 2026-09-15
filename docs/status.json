@@ -1,12 +1,4 @@
 {
   "state": "running",
-  "last_run": {
-    "epoch": 1789470600,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM crashed / closed (not in foreground)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  "updated_at_epoch": 1789470600
+  "updated_at_epoch": 1789470752
 }
