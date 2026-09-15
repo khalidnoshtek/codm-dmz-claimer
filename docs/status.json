@@ -1,8 +1,16 @@
 {
   "state": "sleeping",
-  "next_run": {
-    "epoch": 1789475689,
-    "source": "remembered (min cooldown 3518s, found 3/3)"
+  "last_run": {
+    "epoch": 1789471079,
+    "ok": true,
+    "result": "CLAIMED 2",
+    "detail": null,
+    "claims": 2,
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1789472235
+  "next_run": {
+    "epoch": 1789475712,
+    "source": "test"
+  },
+  "updated_at_epoch": 1789472312
 }

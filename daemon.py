@@ -11,6 +11,7 @@ at most ~1h of becoming available, with no missed cycles.
 """
 from __future__ import annotations
 
+import json
 import logging
 import random
 import signal
@@ -189,7 +190,19 @@ def _publish(cfg: dict, state: str, *, summary: dict | None = None,
     if not bool(cfg.get("publish_status", True)):
         return
     status: dict = {"state": state}
-    if summary is not None:
+    if summary is None:
+        # No new result to report (a start-up pass that skipped its cycle, or
+        # the first publish after a restart). Carry the previous last_run
+        # across verbatim -- rebuilding it from a stale summary would restamp
+        # it with the current time and claim an old run just happened, and
+        # dropping it blanks the dashboard's last-run card.
+        try:
+            prev = json.loads((ROOT / "docs" / "status.json").read_text())
+            if isinstance(prev.get("last_run"), dict):
+                status["last_run"] = prev["last_run"]
+        except Exception:
+            pass
+    else:
         cds = sorted(summary.get("cooldowns_seconds") or [])
         status["last_run"] = {
             "epoch": int(time.time()),
