@@ -981,5 +981,16 @@
     "detail": "CODM crashed / closed (not in foreground)",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789459397,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      0.5,
+      2.2
+    ]
   }
 ]

@@ -1,12 +1,19 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1789459088,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM crashed / closed (not in foreground)",
+    "epoch": 1789459397,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
     "claims": 0,
-    "cooldowns_hours": []
+    "cooldowns_hours": [
+      0.5,
+      2.2
+    ]
   },
-  "updated_at_epoch": 1789459088
+  "next_run": {
+    "epoch": 1789461097,
+    "source": "OCR (min cooldown 1968s, found 2/3)"
+  },
+  "updated_at_epoch": 1789459397
 }
