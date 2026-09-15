@@ -24,6 +24,7 @@ from pathlib import Path
 from claimer import claim_once, load_config, setup_logging
 from lib.adb import AdbDevice, LOCKED_AVD
 from lib.wake import schedule_wake, cancel_wakes
+from lib import cooldowns
 from lib.status import publish_status, read_remote_control, record_run
 
 
@@ -229,58 +230,79 @@ def loop_forever() -> int:
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
     last_fix_at = _ctl0.get("fix_requested_at", 0)
+
+    # Startup: if the remembered expiries say the soonest card is still a long
+    # way off, skip the cycle this iteration and go straight to sleeping. Only
+    # ever applies to the first pass.
+    skip_cycle = False
+    _rem, _ = cooldowns.load(ROOT)
+    _grace = 600  # run anyway if something unlocks within 10 min
+    if _rem and _rem[0] > _grace:
+        skip_cycle = True
+        log.info("Startup: soonest remembered cooldown is %.1fh away — resuming the "
+                 "schedule instead of running a start-up cycle", _rem[0] / 3600)
+
     while not _stopping:
         cfg = load_config()  # re-read each cycle so config changes take effect
         period = float(cfg.get("loop_period_seconds", 10800))
         jitter = float(cfg.get("loop_jitter_seconds", 600))
 
-        # Tell the dashboard a cycle is starting (carry the previous run's
-        # result so it stays visible while this one runs).
-        _publish(cfg, "running", summary=prev_summary)
+        # A restart should not automatically cost a full emulator boot. If we
+        # already know (from the remembered expiries) that nothing unlocks for
+        # a while, there is nothing to claim yet, so resume the schedule
+        # instead of running a cycle that can only come back empty. Without
+        # this, every launchd restart, Mac reboot or config reload burned a
+        # cycle regardless of the cooldowns.
+        if skip_cycle:
+            summary = prev_summary   # keep the dashboard showing the real last run
+        else:
+            # Tell the dashboard a cycle is starting (carry the previous run's
+            # result so it stays visible while this one runs).
+            _publish(cfg, "running", summary=prev_summary)
 
-        # Self-healing: try the cycle up to cycle_max_attempts. On failure,
-        # clean-boot the AVD (fresh emulator) and retry — recovers transient
-        # issues (SystemUI ANR, slow/stuck cold launch, a blocking popup, a
-        # network blip) without waiting a whole sleep period. We do NOT retry a
-        # needs-login failure — that needs a manual sign-in, and churning the
-        # AVD would just ANR it.
-        summary = None  # bound even if claim_once throws (used below + in _publish)
-        max_attempts = max(1, int(cfg.get("cycle_max_attempts", 3)))
-        for attempt in range(1, max_attempts + 1):
-            try:
-                log.info("--- Cycle start (attempt %d/%d) ---", attempt, max_attempts)
-                summary = claim_once(cfg)
-            except Exception as e:
-                log.error("Cycle threw: %s\n%s", e, traceback.format_exc())
-                summary = None
-            if isinstance(summary, dict) and summary.get("ok"):
-                consecutive_failures = 0
-                log.info("Cycle ok — claims_attempted=%s", summary.get("claims_attempted"))
+            # Self-healing: try the cycle up to cycle_max_attempts. On failure,
+            # clean-boot the AVD (fresh emulator) and retry — recovers transient
+            # issues (SystemUI ANR, slow/stuck cold launch, a blocking popup, a
+            # network blip) without waiting a whole sleep period. We do NOT retry a
+            # needs-login failure — that needs a manual sign-in, and churning the
+            # AVD would just ANR it.
+            summary = None  # bound even if claim_once throws (used below + in _publish)
+            max_attempts = max(1, int(cfg.get("cycle_max_attempts", 3)))
+            for attempt in range(1, max_attempts + 1):
+                try:
+                    log.info("--- Cycle start (attempt %d/%d) ---", attempt, max_attempts)
+                    summary = claim_once(cfg)
+                except Exception as e:
+                    log.error("Cycle threw: %s\n%s", e, traceback.format_exc())
+                    summary = None
+                if isinstance(summary, dict) and summary.get("ok"):
+                    consecutive_failures = 0
+                    log.info("Cycle ok — claims_attempted=%s", summary.get("claims_attempted"))
+                    break
+                reason = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
+                if isinstance(summary, dict) and summary.get("reason") == "needs_login":
+                    consecutive_failures += 1
+                    log.warning("Needs login — manual sign-in required, not retrying")
+                    break
+                if attempt < max_attempts and not _stopping:
+                    log.warning("Attempt %d/%d failed (%s) — clean-booting AVD and retrying",
+                                attempt, max_attempts, reason)
+                    _publish(cfg, "running", summary=prev_summary)
+                    _clean_boot_reset()
+                else:
+                    consecutive_failures += 1
+                    log.warning("Cycle failed after %d attempt(s): %s (consecutive_failures=%d)",
+                                attempt, reason, consecutive_failures)
+
+            if _stopping:
                 break
-            reason = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
-            if isinstance(summary, dict) and summary.get("reason") == "needs_login":
-                consecutive_failures += 1
-                log.warning("Needs login — manual sign-in required, not retrying")
-                break
-            if attempt < max_attempts and not _stopping:
-                log.warning("Attempt %d/%d failed (%s) — clean-booting AVD and retrying",
-                            attempt, max_attempts, reason)
-                _publish(cfg, "running", summary=prev_summary)
-                _clean_boot_reset()
-            else:
-                consecutive_failures += 1
-                log.warning("Cycle failed after %d attempt(s): %s (consecutive_failures=%d)",
-                            attempt, reason, consecutive_failures)
 
-        if _stopping:
-            break
-
-        # Cycle fully failed (all retries) and it's not a needs-login case ->
-        # optionally call Claude Code to look at the screenshot + logs and
-        # diagnose/fix. Rate-limited inside _auto_diagnose.
-        if not (isinstance(summary, dict) and summary.get("ok")) \
-                and not (isinstance(summary, dict) and summary.get("reason") == "needs_login"):
-            _auto_diagnose(cfg, summary)
+            # Cycle fully failed (all retries) and it's not a needs-login case ->
+            # optionally call Claude Code to look at the screenshot + logs and
+            # diagnose/fix. Rate-limited inside _auto_diagnose.
+            if not (isinstance(summary, dict) and summary.get("ok")) \
+                    and not (isinstance(summary, dict) and summary.get("reason") == "needs_login"):
+                _auto_diagnose(cfg, summary)
 
         # Back off a bit on repeated failures so we don't hammer a broken AVD.
         backoff = min(consecutive_failures, 4) * 300  # +5min per fail, capped at +20min
@@ -301,6 +323,23 @@ def loop_forever() -> int:
         except NameError:
             pass
         buffer = 120  # 2-minute safety so we don't arrive a few seconds early
+        # A good reading is worth keeping: OCR fails most often on the cycle
+        # straight after a claim (the post-claim page hides the badges), which
+        # is exactly when we need a schedule. Persist as absolute expiries so
+        # the next cycle can reuse them instead of falling back to a blind
+        # fixed period.
+        from_cache = False
+        if all_cooldowns:
+            cooldowns.save(all_cooldowns, ROOT)
+        else:
+            cached, cached_count = cooldowns.load(ROOT)
+            if cached:
+                all_cooldowns = cached
+                ocr_count = cached_count
+                ocr_seconds = cached[0]
+                from_cache = True
+                log.info("OCR read no timers — using %d remembered cooldown(s), "
+                         "soonest in %.1fh", len(cached), cached[0] / 3600)
         if all_cooldowns:
             # Cluster nearby cooldowns: starting from the soonest, include any
             # subsequent cooldown within BURST_WINDOW seconds of the running
@@ -314,11 +353,12 @@ def loop_forever() -> int:
                 else:
                     break
             base = cluster_max + buffer
+            origin = "remembered" if from_cache else "OCR"
             if cluster_max == all_cooldowns[0]:
-                source = f"OCR (min cooldown {ocr_seconds}s, found {ocr_count}/3)"
+                source = f"{origin} (min cooldown {ocr_seconds}s, found {ocr_count}/3)"
             else:
                 in_cluster = [c for c in all_cooldowns if c <= cluster_max]
-                source = (f"OCR (burst cluster of {len(in_cluster)} cooldowns, "
+                source = (f"{origin} (burst cluster of {len(in_cluster)} cooldowns, "
                           f"min={all_cooldowns[0]}s max={cluster_max}s, found {ocr_count}/3)")
         else:
             base = period
@@ -331,7 +371,18 @@ def loop_forever() -> int:
         #     read-out min was actually from a much-longer-cooldown card.
         max_sleep = float(cfg.get("max_sleep_seconds", 7200))            # 2h default
         low_conf_sleep = float(cfg.get("low_confidence_sleep_seconds", 1200))  # 20m default
-        if ocr_count < 3 and ocr_seconds:
+        blind_sleep = float(cfg.get("blind_sleep_seconds", 5400))        # 90m default
+        if not all_cooldowns:
+            # Neither a reading nor anything remembered: we genuinely don't
+            # know when the next card unlocks, so keep the old conservative
+            # re-check interval rather than the (much longer) ceiling we allow
+            # ourselves when we actually know the timers.
+            if base > blind_sleep:
+                log.info("No cooldown data (OCR empty, nothing remembered): "
+                         "capping sleep at %.0fs", blind_sleep)
+                base = blind_sleep
+                source = f"{source} -> blind cap"
+        elif ocr_count < 3 and ocr_seconds:
             tighter = low_conf_sleep
             if base > tighter:
                 log.info("Low-confidence OCR (%d/3 timers): capping sleep at %.0fs instead of %.0fs",
@@ -350,9 +401,11 @@ def loop_forever() -> int:
 
         # Append this run to the rolling history, then publish last-run result
         # + next-run time for the dashboard countdown.
-        record_run(summary, ROOT, retention_days=int(cfg.get("history_retention_days", 7)))
+        if not skip_cycle:
+            record_run(summary, ROOT, retention_days=int(cfg.get("history_retention_days", 7)))
         _publish(cfg, "sleeping", summary=summary, wake_at=wake_at, source=source)
         prev_summary = summary if isinstance(summary, dict) else prev_summary
+        skip_cycle = False   # one-shot: only the start-up pass may skip
 
         # Schedule macOS to wake itself just before the sleep ends. Only worth
         # the round-trip if the wait is long enough (short waits leave no time

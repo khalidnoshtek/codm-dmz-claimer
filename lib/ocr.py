@@ -160,8 +160,10 @@ def read_cooldowns_with_retry(
     """
     import time
     best: list[Cooldown] = []
+    last_screen = None
     for attempt in range(1, max_attempts + 1):
         screen = device.screencap()
+        last_screen = screen
         cds = read_cooldowns(screen)
         # Merge with best-so-far (across attempts), preserving ±5s dedup
         # Same proportional dedup as read_cooldowns
@@ -184,7 +186,27 @@ def read_cooldowns_with_retry(
             "(daemon's max-sleep ceiling will catch the missed one)",
             max_attempts, len(best), expected,
         )
+        _dump_failed_ocr(last_screen)
     return best
+
+
+def _dump_failed_ocr(screen_bgr) -> None:
+    """Save the screen we failed to read timers off, so the miss is
+    diagnosable afterwards. Without this the LST Hunt page is never
+    captured anywhere and a bad read can only be reproduced by running a
+    whole live cycle. Best-effort; never raises into the claim flow."""
+    if screen_bgr is None:
+        return
+    try:
+        import time as _t
+        from pathlib import Path as _P
+        d = _P(__file__).resolve().parent.parent / "logs"
+        d.mkdir(exist_ok=True)
+        f = d / f"{_t.strftime('%Y-%m-%dT%H-%M-%SZ', _t.gmtime())}_cooldown_ocr_miss.png"
+        cv2.imwrite(str(f), screen_bgr)
+        log.info("Saved the unreadable cooldown screen to %s", f)
+    except Exception as e:
+        log.debug("could not dump failed-OCR screen: %s", e)
 
 
 def min_cooldown_seconds(screen_bgr: np.ndarray) -> int | None:

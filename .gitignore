@@ -12,3 +12,4 @@ logs/**
 
 # JetBrains IDE
 .idea/
+logs/cooldowns.json

@@ -71,7 +71,8 @@ sleep_mac_between_cycles: true
 # Hard ceiling on the daemon's between-cycle sleep when OCR found ALL 3 timers
 # (high-confidence schedule). Default 7200s (2h) trades extra cycles for
 # guaranteed coverage.
-max_sleep_seconds: 5400
+max_sleep_seconds: 21600   # 6h — only applies when all 3 timers were read (or remembered);
+                           # an unknown schedule still re-checks on blind_sleep_seconds
 
 # Tighter cap when OCR found FEWER than 3 timers — we can't trust the schedule
 # because the min cooldown we read might be from a long-cooldown card while a
@@ -167,3 +168,7 @@ login_popup_enabled: true
 # (progress bar, then auto-continues). 0 = no extra wait. Bump to ~60 if
 # updates start causing dmz_lobby_check aborts once the popup is gone.
 extra_launch_settle_seconds: 0
+
+# Re-check interval when we have no cooldown data at all — neither an OCR
+# reading this cycle nor a remembered expiry from an earlier one.
+blind_sleep_seconds: 5400
