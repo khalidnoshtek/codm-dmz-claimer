@@ -1,7 +1,7 @@
 {
   "state": "running",
   "last_run": {
-    "epoch": 1789434284,
+    "epoch": 1789434878,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
@@ -12,5 +12,5 @@
       4.0
     ]
   },
-  "updated_at_epoch": 1789434284
+  "updated_at_epoch": 1789434878
 }
