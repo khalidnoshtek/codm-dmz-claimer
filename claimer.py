@@ -55,18 +55,60 @@ def load_config() -> dict:
         return yaml.safe_load(f) or {}
 
 
+def _ocr_region(img, y1: float, y2: float, x1: float, x2: float, upscale: int = 2) -> str:
+    """OCR one fraction-addressed region of the screen, upscaled.
+
+    Whole-frame OCR is unreliable here: the AVD renders at 3120x1440, so
+    dialog and button text is tiny relative to the frame and tesseract drops
+    it. The logged-out screen, for instance, OCR'd to nothing but the version
+    string -- which is why a logged-out cycle was reported as "CODM crashed"
+    for four runs straight. Cropping to the region of interest and upscaling
+    makes the same text read cleanly. Fractions (not pixels) so this survives
+    a resolution change."""
+    import cv2
+    import pytesseract
+    h, w = img.shape[:2]
+    crop = img[int(h * y1):int(h * y2), int(w * x1):int(w * x2)]
+    crop = cv2.resize(crop, None, fx=upscale, fy=upscale, interpolation=cv2.INTER_CUBIC)
+    return pytesseract.image_to_string(cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)).upper()
+
+
+def _signed_out_reason(img) -> str | None:
+    """Why CODM is showing its sign-in screen, or None if it isn't.
+
+    Three distinct states land here and they need different responses:
+      - the account-picker screen (GUEST / CALL OF DUTY / Facebook / Google),
+        identified by the TERMS OF USE & PRIVACY POLICY footer;
+      - "Authorization error. (2B11)", CODM invalidating the session -- the
+        footer is partly hidden behind the dialog's OK button, so the footer
+        check alone misses it;
+      - the Activision password form, which was the only case handled before.
+    """
+    footer = _ocr_region(img, 0.68, 0.95, 0.10, 0.90)
+    # Two body bands on purpose. A wide crop reads a long wrapped message but
+    # loses a single short line -- tesseract's page segmentation gets lost in
+    # the surrounding key art -- while a tight centre crop reads the short line
+    # and clips the wrapped one. "Authorization error. (2B11)" needs the tight
+    # one; "Download configuration failed..." needs the wide one.
+    body = _ocr_region(img, 0.28, 0.62, 0.10, 0.90) + " " + _ocr_region(img, 0.40, 0.60, 0.10, 0.90)
+    if "AUTHORIZATION ERROR" in body:
+        return "CODM signed you out (authorization error) — sign in again on the AVD"
+    if "PRIVACY POLICY" in footer or "TERMS OF USE" in footer:
+        return "signed out — CODM is on the sign-in screen (pick your account on the AVD)"
+    full = _ocr_region(img, 0.0, 1.0, 0.0, 1.0, upscale=1)
+    keys = ("LOGIN NOW", "ACTIVISION ACCOUNT", "FORGOT YOUR PASSWORD",
+            "I'M NOT A ROBOT", "RECAPTCHA", "DON'T HAVE AN ACTIVISION")
+    if any(k in full for k in keys):
+        return "needs login — sign in to CODM (Activision account)"
+    return None
+
+
 def _on_login_screen(device) -> bool:
-    """True if CODM is sitting on the Activision login form (password +
-    captcha). No automation can pass that, so we detect it via OCR and bail
-    out cleanly rather than pressing BACK (which quits the game)."""
+    """True if CODM is sitting on any sign-in state. No automation can pass
+    those, so we detect them and bail out cleanly rather than pressing BACK
+    (which quits the game)."""
     try:
-        import cv2
-        import pytesseract
-        img = device.screencap()
-        txt = pytesseract.image_to_string(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)).upper()
-        keys = ("LOGIN NOW", "ACTIVISION ACCOUNT", "FORGOT YOUR PASSWORD",
-                "I'M NOT A ROBOT", "RECAPTCHA", "DON'T HAVE AN ACTIVISION")
-        return any(k in txt for k in keys)
+        return _signed_out_reason(device.screencap()) is not None
     except Exception:
         return False
 
@@ -76,16 +118,25 @@ def _classify_failure(device, pkg: str) -> str:
     inspecting whatever CODM is actually showing when it gave up. Turns the
     useless generic 'dmz_lobby_check not found' into something actionable."""
     try:
-        if not device.is_app_foreground(pkg):
-            return "CODM crashed / closed (not in foreground)"
         import cv2
         import pytesseract
-        txt = pytesseract.image_to_string(
-            cv2.cvtColor(device.screencap(), cv2.COLOR_BGR2GRAY)).upper()
+        foreground = device.is_app_foreground(pkg)
+        img = device.screencap()
+        txt = pytesseract.image_to_string(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)).upper()
     except Exception:
         return "couldn't reach the DMZ lobby (screen unreadable)"
-    if any(k in txt for k in ("LOGIN NOW", "PASSWORD", "ACTIVISION ACCOUNT", "FORGOT YOUR")):
-        return "needs login — sign in to CODM (Activision account)"
+    # Identify the screen BEFORE falling back to "not in foreground". A
+    # logged-out CODM is still CODM, and "signed you out" is far more
+    # actionable than "crashed" -- which is what four runs reported while the
+    # AVD sat on the sign-in screen.
+    signed_out = _signed_out_reason(img)
+    if signed_out:
+        return signed_out
+    if "DOWNLOAD CONFIGURATION" in (_ocr_region(img, 0.28, 0.62, 0.10, 0.90)
+                                    + " " + _ocr_region(img, 0.40, 0.60, 0.10, 0.90)):
+        return "CODM couldn't download its config — the AVD had no working internet"
+    if not foreground:
+        return "CODM crashed / closed (not in foreground)"
     if "UNSTABLE" in txt or "CHECK YOUR CONNECTION" in txt or "NETWORK" in txt:
         return "CODM network error during load (connection unstable)"
     if "EXPIRED" in txt:
@@ -116,6 +167,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             LOCKED_AVD,
             boot_timeout=float(cfg.get("avd_boot_timeout_seconds", 240)),
             headless=bool(cfg.get("emulator_headless", True)),
+            gpu_mode=str(cfg.get("emulator_gpu", "host")),
         )
     except Exception as e:
         log.error("Could not start/find locked AVD %s: %s", LOCKED_AVD, e)

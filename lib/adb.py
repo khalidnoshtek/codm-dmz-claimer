@@ -46,6 +46,7 @@ def ensure_avd_running(
     boot_timeout: float = 240.0,
     post_boot_settle_seconds: float = 10.0,
     headless: bool = True,
+    gpu_mode: str = "host",
 ) -> str:
     """If the locked AVD is already attached via ADB, return its serial.
     Otherwise launch it via the Android emulator binary, wait for it to come
@@ -79,12 +80,18 @@ def ensure_avd_running(
             return d
     # Cold path: launch the emulator. Detach stdio so the child survives our
     # exit — the daemon doesn't want to babysit it.
-    log.info("Launching AVD %r (cold, headless=%s)", avd_name, headless)
+    log.info("Launching AVD %r (cold, headless=%s, gpu=%s)", avd_name, headless, gpu_mode)
     emu = _emulator_binary()
     emu_args = [
         str(emu), "-avd", avd_name,
         "-no-snapshot",
-        "-gpu", "auto",
+        # "host" (not "auto") on purpose. Headless, "auto" resolves to
+        # SwiftShader -- a CPU rasterizer -- so CODM's 3D lobby was rendered in
+        # software at the AVD's full 1440x3120. That pinned ~8 of 12 cores
+        # (measured: 825% CPU, load average 12.0) and made the whole Mac lag
+        # for the length of a cycle. "host" still works with -no-window and
+        # renders on the GPU via Metal: same run measured 60% CPU.
+        "-gpu", gpu_mode,
         "-no-audio",
         "-netspeed", "full",
         "-netdelay", "none",

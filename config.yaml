@@ -172,3 +172,8 @@ extra_launch_settle_seconds: 0
 # Re-check interval when we have no cooldown data at all — neither an OCR
 # reading this cycle nor a remembered expiry from an earlier one.
 blind_sleep_seconds: 5400
+
+# Emulator renderer. "host" uses the Mac GPU (Metal) even headless; "auto"
+# falls back to SwiftShader, which renders CODM in software and pins ~8 of 12
+# cores. Only change this if the host GPU is unavailable.
+emulator_gpu: host
