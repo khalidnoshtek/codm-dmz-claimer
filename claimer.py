@@ -168,6 +168,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             boot_timeout=float(cfg.get("avd_boot_timeout_seconds", 240)),
             headless=bool(cfg.get("emulator_headless", True)),
             gpu_mode=str(cfg.get("emulator_gpu", "host")),
+            virtio_wifi=bool(cfg.get("emulator_virtio_wifi", False)),
         )
     except Exception as e:
         log.error("Could not start/find locked AVD %s: %s", LOCKED_AVD, e)

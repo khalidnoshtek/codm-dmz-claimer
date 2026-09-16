@@ -251,16 +251,29 @@ def run_step(
                     # claimable (total_tapped < expected), CODM's "reward
                     # obtained" popup is almost certainly covering the remaining
                     # cards — the corner dismiss-tap doesn't always clear it.
-                    # BACK reliably closes CODM modals (and stays on LST Hunt),
-                    # so press BACK to reveal the rest, then re-scan fast. Cap
-                    # the clearing-BACKs per blocked-phase so we never walk out
-                    # of the LST Hunt page chasing a badge that isn't there.
+                    # BACK usually closes the reward popup, but if the popup has
+                    # ALREADY gone the same BACK navigates instead -- out of LST
+                    # Hunt, back toward the Black Market hub. A count-based cap
+                    # does not catch that (3 BACKs for 3 cards is exactly what
+                    # walked us off the page, claiming 1 of 3 and leaving the
+                    # cooldown OCR reading a screen with no timers on it), so
+                    # check the page itself after each BACK and stop the moment
+                    # it is gone.
                     if total_tapped < expected and clearing_backs < (expected - total_tapped) + 1:
                         clearing_backs += 1
                         log.info("step %s: %d/%d claimed but no badges visible — BACK to clear reward popup (%d)",
                                  step.name, total_tapped, expected, clearing_backs)
                         device.back()
                         time.sleep(1.4)
+                        if not _on_lst_hunt_page(device, templates_dir, effective_threshold):
+                            log.warning("step %s: that BACK left the LST Hunt page (popup was "
+                                        "already closed) — re-entering to claim the remaining %d",
+                                        step.name, expected - total_tapped)
+                            if not _reenter_lst_hunt(device, templates_dir, effective_threshold):
+                                log.warning("step %s: could not get back to LST Hunt — "
+                                            "stopping with %d/%d claimed",
+                                            step.name, total_tapped, expected)
+                                break
                         continue
                     empty_streak += 1
                     log.info("step %s: round %d found no matches (empty_streak=%d/%d)",
@@ -318,6 +331,53 @@ def run_step(
     log.warning("step %s: template never appeared within %.1fs (last best score < threshold)",
                 step.name, effective_timeout)
     return (step.on_missing in ("skip",) or step.optional), 0
+
+
+def _on_lst_hunt_page(device, templates_dir: Path, threshold: float) -> bool:
+    """True while the LST Hunt tab is on screen. Used to tell "the BACK closed
+    a popup" (tab still there) from "the BACK navigated us off the page" (tab
+    gone) -- the two look identical from the claim badges alone, because in
+    both cases no badge is visible."""
+    try:
+        return bool(find_template(device.screencap(),
+                                  templates_dir / "04_lst_hunt_tab.png",
+                                  threshold=threshold))
+    except Exception:
+        return False
+
+
+def _reenter_lst_hunt(device, templates_dir: Path, threshold: float) -> bool:
+    """Walk forward to the LST Hunt page after a BACK dropped us out of it.
+
+    Taps whichever waypoint is on screen, in order, re-checking each time --
+    a BACK may have landed us one screen back or several, so this is written
+    to cope with starting anywhere along the path rather than assuming the
+    Black Market hub.
+    """
+    path = ("02b_black_market_inner.png", "03_underground_offers_card.png",
+            "04_lst_hunt_tab.png")
+    for _ in range(6):
+        if _on_lst_hunt_page(device, templates_dir, threshold):
+            # The tab being visible is necessary but not sufficient: it is also
+            # the thing we tap to open the list, so give it one tap to be sure
+            # the LST Hunt list itself is showing before we resume claiming.
+            hit = find_template(device.screencap(), templates_dir / "04_lst_hunt_tab.png",
+                                threshold=threshold)
+            if hit:
+                device.tap(hit.x, hit.y)
+                time.sleep(1.5)
+            return True
+        screen = device.screencap()
+        for name in path:
+            hit = find_template(screen, templates_dir / name, threshold=threshold)
+            if hit:
+                log.info("  re-entry: tapping %s at (%d,%d)", name, hit.x, hit.y)
+                device.tap(hit.x, hit.y)
+                time.sleep(2.0)
+                break
+        else:
+            time.sleep(1.2)
+    return _on_lst_hunt_page(device, templates_dir, threshold)
 
 
 def run_flow(

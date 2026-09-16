@@ -177,3 +177,8 @@ blind_sleep_seconds: 5400
 # falls back to SwiftShader, which renders CODM in software and pins ~8 of 12
 # cores. Only change this if the host GPU is unavailable.
 emulator_gpu: host
+
+# Emulator WiFi simulation. Newer images route wlan0 through netsimd, which
+# adds ~400ms to every TCP connect inside the AVD. Off = eth0 only, which
+# measured on par with the host. Turn on only if something needs a WiFi iface.
+emulator_virtio_wifi: false

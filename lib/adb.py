@@ -47,6 +47,7 @@ def ensure_avd_running(
     post_boot_settle_seconds: float = 10.0,
     headless: bool = True,
     gpu_mode: str = "host",
+    virtio_wifi: bool = False,
 ) -> str:
     """If the locked AVD is already attached via ADB, return its serial.
     Otherwise launch it via the Android emulator binary, wait for it to come
@@ -102,6 +103,15 @@ def ensure_avd_running(
         # 8.8.8.8/8.8.4.4 fixes the download hang.
         "-dns-server", "8.8.8.8,8.8.4.4",
     ]
+    if not virtio_wifi:
+        # Newer emulator images bring up BOTH eth0 and a virtio wlan0 on the
+        # same 10.0.2.0/24, and Android prefers the wlan0 route -- which is
+        # carried by the netsimd network simulator. That simulation is the
+        # single biggest source of network latency in the AVD: measured
+        # TCP connect ~495ms through wlan0 vs ~90ms on eth0, against ~114ms
+        # from the host itself. Turning the feature off removes wlan0 and puts
+        # the AVD back on par with the host.
+        emu_args += ["-feature", "-VirtioWifi"]
     if headless:
         emu_args.append("-no-window")
     subprocess.Popen(
