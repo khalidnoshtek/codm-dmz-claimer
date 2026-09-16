@@ -1,46 +1,5 @@
 [
   {
-    "epoch": 1788891401,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1788897358,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "claims": 1,
-    "cooldowns_hours": [
-      6.8
-    ]
-  },
-  {
-    "epoch": 1788901061,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1788922787,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1788923156,
-    "ok": true,
-    "result": "nothing claimable",
-    "claims": 0,
-    "cooldowns_hours": [
-      0.8,
-      1.9,
-      3.9
-    ]
-  },
-  {
     "epoch": 1788945659,
     "ok": true,
     "result": "CLAIMED 1",
@@ -1026,5 +985,13 @@
       2.3,
       2.9
     ]
+  },
+  {
+    "epoch": 1789539132,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM crashed / closed (not in foreground)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]

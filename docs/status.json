@@ -1,16 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1789492008,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
+    "epoch": 1789539132,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM crashed / closed (not in foreground)",
     "claims": 0,
-    "cooldowns_hours": [
-      2.2,
-      2.3,
-      2.9
-    ]
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1789538425
+  "next_run": {
+    "epoch": 1789544377,
+    "source": "config period -> blind cap"
+  },
+  "updated_at_epoch": 1789539132
 }
