@@ -177,6 +177,8 @@ def _result_text(summary: dict | None) -> str:
         return "unknown"
     if summary.get("reason") == "needs_login":
         return "NEEDS LOGIN"
+    if summary.get("reason") == "session_conflict":
+        return "SKIPPED — you were playing"
     if not summary.get("ok"):
         return "Failed"
     claimed = summary.get("claims_attempted") or 0
@@ -297,6 +299,14 @@ def loop_forever() -> int:
                     consecutive_failures += 1
                     log.warning("Needs login — manual sign-in required, not retrying")
                     break
+                if isinstance(summary, dict) and summary.get("reason") == "session_conflict":
+                    # You are playing on another device. Retrying signs in
+                    # again and kicks you off mid-match, so stop after one
+                    # attempt and come back later -- nothing was claimed, so
+                    # the rewards are still waiting.
+                    log.warning("You're playing CODM elsewhere — skipping this cycle "
+                                "rather than kicking you off; will retry later")
+                    break
                 if attempt < max_attempts and not _stopping:
                     log.warning("Attempt %d/%d failed (%s) — clean-booting AVD and retrying",
                                 attempt, max_attempts, reason)
@@ -385,7 +395,15 @@ def loop_forever() -> int:
         max_sleep = float(cfg.get("max_sleep_seconds", 7200))            # 2h default
         low_conf_sleep = float(cfg.get("low_confidence_sleep_seconds", 1200))  # 20m default
         blind_sleep = float(cfg.get("blind_sleep_seconds", 5400))        # 90m default
-        if not all_cooldowns:
+        if isinstance(summary, dict) and summary.get("reason") == "session_conflict":
+            # Nothing was claimed and the cards are still waiting; we just
+            # could not get in. Come back after a short wait rather than
+            # sleeping a full cooldown -- but not so soon that we interrupt
+            # the session that is still in progress.
+            base = float(cfg.get("session_conflict_retry_seconds", 2700))
+            source = "you were playing — short retry"
+            log.info("Session conflict: retrying in %.0f min", base / 60)
+        elif not all_cooldowns:
             # Neither a reading nor anything remembered: we genuinely don't
             # know when the next card unlocks, so keep the old conservative
             # re-check interval rather than the (much longer) ceiling we allow

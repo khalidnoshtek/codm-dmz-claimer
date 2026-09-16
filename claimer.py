@@ -113,6 +113,27 @@ def _on_login_screen(device) -> bool:
         return False
 
 
+SESSION_CONFLICT_DETAIL = ("you were playing CODM elsewhere — the AVD session was "
+                           "kicked (account accessed from another location)")
+
+
+def _session_conflict(img) -> bool:
+    """True for CODM's "Account accessed from another location. (0E100004)"
+    dialog.
+
+    CODM allows one live session per account, so this appears whenever the
+    claimer connects while you are playing on your phone. The dialog's only
+    button is QUIT GAME -- there is nothing to dismiss, which is why the
+    popup handler sat tapping its close-X six times in a row and the cycle
+    hung until the AVD stopped responding.
+
+    It matters that this is never retried: each retry signs in again and
+    kicks YOU off your phone mid-match.
+    """
+    body = _ocr_region(img, 0.28, 0.62, 0.10, 0.90) + " " + _ocr_region(img, 0.40, 0.60, 0.10, 0.90)
+    return "ACCESSED FROM ANOTHER" in body or "0E100004" in body or "OE100004" in body
+
+
 def _classify_failure(device, pkg: str) -> str:
     """Human-readable reason the flow couldn't reach the claim screen, by
     inspecting whatever CODM is actually showing when it gave up. Turns the
@@ -129,6 +150,8 @@ def _classify_failure(device, pkg: str) -> str:
     # logged-out CODM is still CODM, and "signed you out" is far more
     # actionable than "crashed" -- which is what four runs reported while the
     # AVD sat on the sign-in screen.
+    if _session_conflict(img):
+        return SESSION_CONFLICT_DETAIL
     signed_out = _signed_out_reason(img)
     if signed_out:
         return signed_out
@@ -521,8 +544,12 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     # crash) so the status + dashboard show something actionable, not just
     # "dmz_lobby_check not found".
     fail_detail = None
+    fail_reason = None
     if not result.ok() and not dry_run:
         fail_detail = _classify_failure(device, pkg)
+        if fail_detail == SESSION_CONFLICT_DETAIL:
+            # Retrying would sign in again and kick the player off their phone.
+            fail_reason = "session_conflict"
 
     summary = {
         "ok": result.ok(),
@@ -533,6 +560,7 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         "aborted_at": result.aborted_at,
         "abort_reason": result.abort_reason,
         "fail_detail": fail_detail,
+        "reason": fail_reason,
         "final_screenshot": str(final_path) if final_path.exists() else None,
         "cooldowns_seconds": cooldowns_seconds,  # remaining seconds per card that's locked
         "min_cooldown_seconds": min(cooldowns_seconds) if cooldowns_seconds else None,

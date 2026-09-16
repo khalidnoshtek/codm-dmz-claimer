@@ -81,6 +81,8 @@ def _result_line(summary: dict | None) -> tuple[bool, int, str]:
         return False, 0, "FAILED (error)"
     if summary.get("reason") == "needs_login":
         return False, 0, "NEEDS LOGIN"
+    if summary.get("reason") == "session_conflict":
+        return False, 0, "SKIPPED — you were playing"
     ok = bool(summary.get("ok"))
     claims = summary.get("claims_attempted") or 0
     if not ok:

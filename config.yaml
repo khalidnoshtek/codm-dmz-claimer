@@ -182,3 +182,7 @@ emulator_gpu: host
 # adds ~400ms to every TCP connect inside the AVD. Off = eth0 only, which
 # measured on par with the host. Turn on only if something needs a WiFi iface.
 emulator_virtio_wifi: false
+
+# How long to wait after CODM kicked the AVD because you were playing on
+# another device. Nothing was claimed, so this is a short retry, not a cooldown.
+session_conflict_retry_seconds: 2700
