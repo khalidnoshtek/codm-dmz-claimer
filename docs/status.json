@@ -16,5 +16,9 @@
     "epoch": 1789556474,
     "source": "remembered (min cooldown 2133s, found 3/3)"
   },
-  "updated_at_epoch": 1789554286
+  "diagnosis": {
+    "epoch": 1789554432,
+    "text": "DIAGNOSIS: The claimer is not currently blocked \u2014 all 3 rewards are on cooldown and the last cycle correctly exited with \"nothing claimable\"; the 'unknown' failure reason is a code-ordering bug in `claimer.py` where `_classify_failure` (line 567) is called after `emu kill` (line 549), so the AVD is always dead when diagnosis runs and the function always falls back to its generic exception handler, leaving `summary['reason']` as `None` for every failure."
+  },
+  "updated_at_epoch": 1789554432
 }
