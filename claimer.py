@@ -103,12 +103,30 @@ def _signed_out_reason(img) -> str | None:
     return None
 
 
-def _on_login_screen(device) -> bool:
-    """True if CODM is sitting on any sign-in state. No automation can pass
-    those, so we detect them and bail out cleanly rather than pressing BACK
-    (which quits the game)."""
+def _on_login_screen(device, confirm_seconds: float = 120.0) -> bool:
+    """True if CODM is genuinely stuck on a sign-in state.
+
+    One look is not enough. CODM renders the sign-in layout -- the account
+    buttons and the TERMS OF USE & PRIVACY POLICY footer -- while it is
+    AUTO-logging in, so a single glance cannot tell "signed out" from
+    "signing in", and calling it early aborts a perfectly good cycle with a
+    bogus needs_login. So re-look until the screen moves on or the window
+    expires; only a sign-in screen that is still there at the end counts.
+
+    The authorization-error dialog is the exception: it is a definitive
+    rejection, not a transient state, so it returns immediately.
+    """
     try:
-        return _signed_out_reason(device.screencap()) is not None
+        deadline = time.time() + confirm_seconds
+        while True:
+            reason = _signed_out_reason(device.screencap())
+            if reason is None:
+                return False               # moved on -> it was signing itself in
+            if "authorization error" in reason:
+                return True                # definitive, no point waiting
+            if time.time() >= deadline:
+                return True                # still sitting there -> genuinely out
+            time.sleep(5.0)
     except Exception:
         return False
 
