@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1789659241,
+    "epoch": 1789659289,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1789662279,
+    "epoch": 1789673669,
     "source": "manual reschedule"
   },
-  "updated_at_epoch": 1789659241
+  "updated_at_epoch": 1789659289
 }
