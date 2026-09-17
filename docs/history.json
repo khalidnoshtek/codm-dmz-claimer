@@ -1,26 +1,5 @@
 [
   {
-    "epoch": 1789043781,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789045075,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789050916,
-    "ok": false,
-    "result": "FAILED at dmz_lobby_check",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1789053401,
     "ok": false,
     "result": "FAILED at dmz_lobby_check",
@@ -1008,6 +987,16 @@
       3.7,
       6.7,
       7.0
+    ]
+  },
+  {
+    "epoch": 1789656314,
+    "ok": true,
+    "result": "CLAIMED 1",
+    "detail": null,
+    "claims": 1,
+    "cooldowns_hours": [
+      3.1
     ]
   }
 ]
