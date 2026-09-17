@@ -88,6 +88,43 @@ def _ocr_text(image: np.ndarray, psm: int) -> str:
     )
 
 
+def _ocr_timers_located(image: np.ndarray, psm: int) -> list[tuple[int, int, int]]:
+    """Every 'Remaining HH:MM:SS' on the image as (seconds, centre_x, centre_y).
+
+    Positions matter because two different cards can legitimately be seconds
+    apart -- a real screen had badges at 00:36:26 and 00:36:06, 20s apart --
+    and no value-based rule can tell that from the same badge being re-read
+    slightly differently across passes. Where the text sits on screen can:
+    one badge is one place.
+    """
+    data = pytesseract.image_to_data(
+        image,
+        config=f"--psm {psm} -c tessedit_char_whitelist=0123456789:Remaining ",
+        output_type=pytesseract.Output.DICT,
+    )
+    # Match each time as a SINGLE WORD and use that word's own box. Grouping
+    # into lines does not work here: PSM 6 and 3 treat a whole row of the page
+    # as one line, merging separate badges (and the currency in the header)
+    # together, so the box spans the width and the x centre is meaningless --
+    # the same badge came back at x=4984 on one pass and x=6316 on another.
+    # A single word's box is tight and lands in the same place every pass.
+    out: list[tuple[int, int, int]] = []
+    for i, word in enumerate(data["text"]):
+        w = word.strip()
+        if not w:
+            continue
+        m = TIME_RE.fullmatch(w) or TIME_RE.search(w)
+        if not m:
+            continue
+        hh, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if mm >= 60 or ss >= 60 or hh > 48:
+            continue
+        cx = data["left"][i] + data["width"][i] // 2
+        cy = data["top"][i] + data["height"][i] // 2
+        out.append((hh * 3600 + mm * 60 + ss, cx, cy))
+    return out
+
+
 # LST Hunt always has 3 cards. If OCR finds fewer than this, we log a
 # warning — the daemon still works (min() drives the schedule) but it's
 # a signal the preprocessing or PSM config might need tuning.
@@ -108,6 +145,7 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
     def _is_dup(a: int, b: int) -> bool:
         return abs(a - b) <= max(25, int(0.05 * min(a, b)))
     out: list[Cooldown] = []
+    seen: list[tuple[int, int]] = []   # centre of each badge already recorded
     # Crop to the badge ROI first — tesseract is far more reliable when
     # not distracted by the header / sidebar / footer regions.
     roi = _crop_roi(screen_bgr)
@@ -121,17 +159,27 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
             except Exception as e:
                 log.debug("tesseract %s/PSM %d failed: %s", prep_method, psm, e)
                 continue
-            for m in TIME_RE.finditer(raw):
-                hh, mm, ss = int(m.group(1)), int(m.group(2)), int(m.group(3))
-                if mm >= 60 or ss >= 60 or hh > 48:
+            try:
+                located = _ocr_timers_located(binary, psm)
+            except Exception as e:
+                log.debug("image_to_data %s/PSM %d failed: %s", prep_method, psm, e)
+                located = []
+            # Same badge, seen again on another pass -> same place on screen.
+            # Tolerance is generous (badges are far apart) but far tighter than
+            # any value rule could be: it was the value rule, collapsing
+            # anything within 5%, that silently merged two real cards 20s apart
+            # and left the daemon on a low-confidence 2/3 read.
+            h_roi, w_roi = binary.shape[:2]
+            near_x, near_y = int(w_roi * 0.06), int(h_roi * 0.06)
+            for secs, cx, cy in located:
+                if any(abs(cx - sx) <= near_x and abs(cy - sy) <= near_y
+                       for sx, sy in seen):
                     continue
-                secs = hh * 3600 + mm * 60 + ss
-                if any(_is_dup(c.seconds, secs) for c in out):
-                    continue
-                cd = Cooldown(raw_text=m.group(0), seconds=secs)
-                out.append(cd)
-                log.info("read cooldown (%s/PSM %d): %r -> %ds (~%.1fh)",
-                         prep_method, psm, m.group(0), secs, secs / 3600)
+                seen.append((cx, cy))
+                out.append(Cooldown(raw_text=f"{secs//3600:02d}:{secs%3600//60:02d}:{secs%60:02d}",
+                                    seconds=secs))
+                log.info("read cooldown (%s/PSM %d) at (%d,%d): %ds (~%.1fh)",
+                         prep_method, psm, cx, cy, secs, secs / 3600)
     if len(out) < EXPECTED_TIMER_COUNT:
         log.warning(
             "OCR found only %d cooldown timer(s), expected %d — daemon will still use "
