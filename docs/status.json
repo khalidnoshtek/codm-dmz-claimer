@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789659289,
+    "epoch": 1789661758,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1789673669,
-    "source": "manual reschedule"
-  },
-  "updated_at_epoch": 1789659289
+  "updated_at_epoch": 1789661758
 }
