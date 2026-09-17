@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
     "epoch": 1789665136,
     "ok": true,
@@ -11,9 +11,5 @@
       0.6
     ]
   },
-  "next_run": {
-    "epoch": 1789667239,
-    "source": "remembered (burst cluster of 2 cooldowns, min=1625s max=1876s, found 2/3)"
-  },
-  "updated_at_epoch": 1789665471
+  "updated_at_epoch": 1789667241
 }
