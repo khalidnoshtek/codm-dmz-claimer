@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
     "epoch": 1789584784,
     "ok": true,
@@ -13,13 +13,9 @@
       14.0
     ]
   },
-  "next_run": {
-    "epoch": 1789634722,
-    "source": "remembered (min cooldown 9238s, found 4/3)"
-  },
   "diagnosis": {
     "epoch": 1789626315,
     "text": "DIAGNOSIS: The `login_popup_confirm` step is still enabled despite the one-time popup being gone, burning 240 total seconds per cycle (120s \u00d7 2 passes) waiting for a template that never appears \u2014 this caused `dmz_lobby_check` to time out on the first pass and forced recovery; the dashboard then misread the successful run's `reason: null` field as an unknown failure instead of checking `ok: true` first."
   },
-  "updated_at_epoch": 1789626315
+  "updated_at_epoch": 1789626364
 }
