@@ -12,8 +12,8 @@
     ]
   },
   "next_run": {
-    "epoch": 1789667035,
-    "source": "OCR (burst cluster of 2 cooldowns, min=1960s max=2211s, found 2/3)"
+    "epoch": 1789667239,
+    "source": "remembered (burst cluster of 2 cooldowns, min=1625s max=1876s, found 2/3)"
   },
-  "updated_at_epoch": 1789665136
+  "updated_at_epoch": 1789665471
 }
