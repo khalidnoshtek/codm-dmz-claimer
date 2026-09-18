@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789758332,
+    "epoch": 1789758377,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
@@ -10,9 +10,5 @@
       25.3
     ]
   },
-  "next_run": {
-    "epoch": 1789848834,
-    "source": "manual reschedule"
-  },
-  "updated_at_epoch": 1789758332
+  "updated_at_epoch": 1789758377
 }
