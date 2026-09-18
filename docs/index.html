@@ -253,7 +253,19 @@ function render(){
 }
 function tick(){
   if(!data)return;
-  const now=Date.now()/1000|0, hero=$('hero'), nr=data.next_run;
+  const now=Date.now()/1000|0, hero=$('hero');
+  /* Show a button press straight away. The real value has to travel:
+     daemon poll (<=45s) -> git push -> GitHub Pages rebuild -> this page's
+     20s refetch, so the old countdown used to sit there for a minute or two
+     after a delay and look like the press was ignored. Until the daemon's
+     published value catches up, count down to what we asked for and mark it
+     pending. */
+  let nr=data.next_run;
+  if(pendingAt>now){
+    const pub=nr?nr.epoch:0;
+    if(Math.abs(pub-pendingAt)<=30) pendingAt=0;            /* daemon agrees -> done */
+    else nr={epoch:pendingAt,source:'pending',pending:true};
+  }
   const stale=now-(data.updated_at_epoch||0)>3*3600;
   const isLogin=data.last_run&&data.last_run.result==='NEEDS LOGIN';
   let state,icon,label,count,when,sub,subIcon;
@@ -265,6 +277,7 @@ function tick(){
     if(left<=0){state='run';icon='loader';label='Starting soon';count='0:00';when='next run is due now';sub='';}
     else if(left<=300){state='soon';icon='alarm-clock';label='Starts soon';count=fmtDur(left);when='at '+fmtClock(nr.epoch);sub='Wrap up your match — claimer takes over soon';subIcon='alert-triangle';}
     else{state='safe';icon='gamepad-2';label='Safe to play';count=fmtDur(left);when='next run at '+fmtClock(nr.epoch);sub='Safe to play for '+fmtDur(left);subIcon='check';}
+    if(nr.pending){when+=' · saving…';sub='Reschedule sent — confirming with the claimer';subIcon='loader';}
   }
   hero.className='card hero st-'+state;
   setIcon($('stateIcon'),icon,(state==='run'||count==='0:00')?'i spin':'i');
