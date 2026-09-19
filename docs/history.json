@@ -1,34 +1,5 @@
 [
   {
-    "epoch": 1789246944,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.0,
-      1.5
-    ]
-  },
-  {
-    "epoch": 1789248047,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789248689,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      36.9
-    ]
-  },
-  {
     "epoch": 1789252635,
     "ok": true,
     "result": "CLAIMED 1",
@@ -994,6 +965,14 @@
   },
   {
     "epoch": 1789850583,
+    "ok": false,
+    "result": "Failed",
+    "detail": "couldn't reach the DMZ lobby (screen unreadable)",
+    "claims": 0,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789854289,
     "ok": false,
     "result": "Failed",
     "detail": "couldn't reach the DMZ lobby (screen unreadable)",
