@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789809927,
+    "epoch": 1789819892,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -12,9 +12,5 @@
       3.8
     ]
   },
-  "next_run": {
-    "epoch": 1789819892,
-    "source": "manual reschedule"
-  },
-  "updated_at_epoch": 1789809927
+  "updated_at_epoch": 1789819892
 }
