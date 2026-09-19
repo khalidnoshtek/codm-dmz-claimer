@@ -186,3 +186,7 @@ emulator_virtio_wifi: false
 # How long to wait after CODM kicked the AVD because you were playing on
 # another device. Nothing was claimed, so this is a short retry, not a cooldown.
 session_conflict_retry_seconds: 2700
+
+# How long to hold off a claim cycle after you open the AVD from the dashboard
+# to sign in. A cycle starting mid-sign-in would fight you for the screen.
+signin_hold_seconds: 1800

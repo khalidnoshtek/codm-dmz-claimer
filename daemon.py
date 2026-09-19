@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import logging
 import random
+import shutil
 import signal
 import subprocess
 import sys
@@ -152,6 +153,62 @@ def _auto_diagnose(cfg: dict, summary: dict | None) -> str | None:
         return None
 
 
+def _open_avd_for_signin(cfg: dict) -> bool:
+    """Bring the AVD up and put it on screen so a human can sign in to CODM.
+
+    This is not a claim cycle: nothing is tapped and the AVD is left running
+    until it is closed again. It exists because a CODM sign-out can only be
+    cleared by hand, and until now that meant getting to a terminal -- the
+    dashboard could tell you a sign-in was needed but not let you do anything
+    about it.
+
+    The emulator still renders headless (same flags the claimer uses, so the
+    GPU path and the wifi setting stay identical); scrcpy is what makes it
+    visible, and its absence is not fatal -- the AVD is still reachable.
+    """
+    log = logging.getLogger("daemon")
+    try:
+        from lib.adb import ensure_avd_running, LOCKED_AVD, AdbDevice
+        ensure_avd_running(
+            LOCKED_AVD,
+            boot_timeout=float(cfg.get("avd_boot_timeout_seconds", 240)),
+            headless=bool(cfg.get("emulator_headless", True)),
+            gpu_mode=str(cfg.get("emulator_gpu", "host")),
+            virtio_wifi=bool(cfg.get("emulator_virtio_wifi", False)),
+        )
+        dev = AdbDevice.auto(target_avd=LOCKED_AVD)
+        dev.launch_app(str(cfg.get("package", "com.activision.callofduty.shooter")))
+        viewer = shutil.which("scrcpy")
+        if viewer:
+            subprocess.Popen([viewer, "--window-title", "CODM - SIGN IN HERE"],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             stdin=subprocess.DEVNULL, start_new_session=True)
+            log.info("AVD open for sign-in — scrcpy window started")
+        else:
+            log.warning("AVD is up but scrcpy is not installed — no window to show")
+        return True
+    except Exception as e:
+        log.error("Could not open the AVD for sign-in: %s", e)
+        return False
+
+
+def _close_avd() -> None:
+    """Shut the sign-in AVD down and close its window."""
+    log = logging.getLogger("daemon")
+    try:
+        subprocess.run(["pkill", "-x", "scrcpy"], check=False, capture_output=True, timeout=10)
+    except Exception:
+        pass
+    try:
+        from lib.adb import AdbDevice, LOCKED_AVD
+        dev = AdbDevice.auto(target_avd=LOCKED_AVD)
+        subprocess.run(["adb", "-s", dev.serial, "emu", "kill"],
+                       check=False, capture_output=True, timeout=15)
+        log.info("Sign-in AVD closed")
+    except Exception as e:
+        log.warning("Could not close the AVD cleanly: %s", e)
+
+
 def _clean_boot_reset() -> None:
     """Kill the locked AVD so the next attempt cold-boots a fresh, healthy
     emulator. Recovers from a wedged state (SystemUI ANR, stuck launch) that a
@@ -245,6 +302,8 @@ def loop_forever() -> int:
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
     last_fix_at = _ctl0.get("fix_requested_at", 0)
+    last_avd_open = _ctl0.get("avd_open_at", 0)
+    last_avd_close = _ctl0.get("avd_close_at", 0)
 
     # Startup: if the remembered expiries say the soonest card is still a long
     # way off, skip the cycle this iteration and go straight to sleeping. Only
@@ -472,6 +531,28 @@ def loop_forever() -> int:
                     log.info("Dashboard requested a Claude analysis — running now")
                     _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
                     _run_diagnosis_sync(cfg, summary)
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    last_poll = time.time()
+                    continue
+                # "Open the AVD so I can sign in" — bring the emulator up and
+                # leave it up. Also push the next run out: a claim cycle
+                # starting while someone is typing a password would fight them
+                # for the screen and then kill the AVD from under them.
+                if ctl.get("avd_open_at", 0) > last_avd_open:
+                    last_avd_open = ctl["avd_open_at"]
+                    log.info("Dashboard asked to open the AVD for sign-in")
+                    if _open_avd_for_signin(cfg):
+                        hold = float(cfg.get("signin_hold_seconds", 1800))
+                        deadline = max(deadline, time.time() + hold)
+                        source = "AVD open for sign-in"
+                        log.info("Holding the next run for %.0f min while you sign in", hold / 60)
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    last_poll = time.time()
+                    continue
+                if ctl.get("avd_close_at", 0) > last_avd_close:
+                    last_avd_close = ctl["avd_close_at"]
+                    log.info("Dashboard asked to close the sign-in AVD")
+                    _close_avd()
                     _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
                     last_poll = time.time()
                     continue

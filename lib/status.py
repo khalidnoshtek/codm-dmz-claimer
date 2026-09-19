@@ -131,7 +131,8 @@ def read_remote_control(repo_root: Path) -> dict:
     git rather than the raw CDN URL so the values are fresh (no ~5-min Fastly
     cache) and unauthenticated-rate-limit free. Also advances the origin/main
     tracking ref, so the next status push rebases cleanly onto any button commit."""
-    _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0, "fix_requested_at": 0}
+    _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0, "fix_requested_at": 0,
+             "avd_open_at": 0, "avd_close_at": 0}
     try:
         f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
         if f.returncode != 0:
@@ -145,6 +146,11 @@ def read_remote_control(repo_root: Path) -> dict:
             "delay_until": int(d.get("delay_until", 0) or 0),
             "run_at": int(d.get("run_at", 0) or 0),
             "fix_requested_at": int(d.get("fix_requested_at", 0) or 0),
+            # "open the AVD so I can sign in" / "close it again", from the
+            # dashboard -- these start a VISIBLE emulator for a human to use,
+            # not a claim cycle.
+            "avd_open_at": int(d.get("avd_open_at", 0) or 0),
+            "avd_close_at": int(d.get("avd_close_at", 0) or 0),
         }
     except Exception:
-        return {"requested_at": 0, "delay_until": 0, "run_at": 0}
+        return dict(_zero)

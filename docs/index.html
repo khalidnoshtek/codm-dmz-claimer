@@ -86,6 +86,10 @@
     background:linear-gradient(180deg,#4ee3a6,#2fca8b);border-color:transparent;box-shadow:0 8px 20px -8px rgba(52,211,153,.6)}
   .btn-run:hover{background:linear-gradient(180deg,#5cebb0,#37d495)}
   .seg{margin-top:16px}
+  /* two buttons side by side; they stack under ~340px so the labels never
+     get clipped on a phone */
+  .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media (max-width:340px){.pair{grid-template-columns:1fr}}
   .seg .lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;display:flex;align-items:center;gap:6px}
   .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
   .chip{min-width:0;padding:11px 4px;font-size:12.5px;background:var(--card2);color:var(--txt);white-space:nowrap}
@@ -174,6 +178,14 @@
         <button class="btn chip post" data-adj="7200">+2h</button>
       </div>
       <button class="btn chip ready" id="readyBtn"><i data-lucide="target" class="i"></i> Run when first reward is ready</button>
+    </div>
+
+    <div class="seg">
+      <div class="lbl"><i data-lucide="log-in" class="i"></i> CODM signed out?</div>
+      <div class="pair">
+        <button class="btn chip" id="avdOpenBtn"><i data-lucide="monitor-play" class="i"></i> Open AVD to sign in</button>
+        <button class="btn chip" id="avdCloseBtn"><i data-lucide="power" class="i"></i> Close AVD</button>
+      </div>
     </div>
 
     <div class="seg">
@@ -332,7 +344,7 @@ async function write(patch,okMsg){
     const g=await fetch(API+'?ref=main&t='+Date.now(),{headers:H,cache:'no-store'});
     if(g.status===401||g.status===403){msg('Token invalid/expired or missing Contents:write.','err');return false;}
     const gj=await g.json();let cur={};try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
-    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,...cur,...patch};
+    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,avd_open_at:0,avd_close_at:0,...cur,...patch};
     const p=await fetch(API,{method:'PUT',headers:H,body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(body,null,2)+'\n'),sha:gj.sha,branch:'main'})});
     if(p.ok){msg(okMsg,'ok');return true;}
     const pj=await p.json().catch(()=>({}));msg('Failed: '+(pj.message||('HTTP '+p.status)),'err');return false;
@@ -352,6 +364,20 @@ async function runWhenReady(){
   if(at<now+60)at=now+60; pendingAt=at;
   await write({run_at:at},'Set to run when first reward unlocks (~'+fmtClock(at)+').');
 }
+async function openAvd(){
+  const b=$('avdOpenBtn'); b.disabled=true;
+  /* Opening the AVD also holds the next claim cycle off for a while, so tell
+     the user that rather than leaving the countdown looking wrong. */
+  const ok=await write({avd_open_at:Date.now()/1000|0},
+    'Opening the AVD on your Mac — the window appears in ~1 min. Claiming is paused ~30 min.');
+  setTimeout(()=>{b.disabled=false;},20000);
+  if(ok){pendingAt=(Date.now()/1000|0)+1800;}
+}
+async function closeAvd(){
+  const b=$('avdCloseBtn'); b.disabled=true;
+  await write({avd_close_at:Date.now()/1000|0},'Closing the AVD.');
+  setTimeout(()=>{b.disabled=false;},20000);
+}
 async function askClaude(){
   const b=$('fixBtn'); b.disabled=true;
   const ok=await write({fix_requested_at:Date.now()/1000|0},
@@ -368,6 +394,8 @@ $('fixBtn').addEventListener('click',askClaude);
 $('runBtn').addEventListener('click',runNow);
 $('tokBtn').addEventListener('click',setTok);
 $('readyBtn').addEventListener('click',runWhenReady);
+$('avdOpenBtn').addEventListener('click',openAvd);
+$('avdCloseBtn').addEventListener('click',closeAvd);
 document.querySelectorAll('.chip[data-adj]').forEach(b=>b.addEventListener('click',()=>adjust(parseInt(b.dataset.adj,10))));
 
 /* build "last run / next run" detail card dynamically (kept out of markup for brevity) */
