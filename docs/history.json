@@ -1023,5 +1023,15 @@
       7.2,
       8.0
     ]
+  },
+  {
+    "epoch": 1789823763,
+    "ok": true,
+    "result": "CLAIMED 1",
+    "detail": null,
+    "claims": 1,
+    "cooldowns_hours": [
+      25.3
+    ]
   }
 ]
