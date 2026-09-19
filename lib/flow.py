@@ -61,7 +61,19 @@ DEFAULT_STEPS: list[Step] = [
         name="login_popup_confirm",
         template="06_login_popup_confirm.png",
         on_missing="skip",
-        timeout_override=120.0,
+        # 25s, not 120s. This popup stopped appearing on 2026-09-12 (92
+        # matches before that date, zero since, against 109 timeouts), but the
+        # 120s timeout was still spent in full on every navigation pass --
+        # twice per attempt with the recovery retry, so ~4 minutes of an
+        # average 5.2-minute successful cycle was this step waiting for
+        # something that no longer exists.
+        #
+        # The wait is not deleted outright: it was also, accidentally, the
+        # budget that let CODM finish its cold load. That job moves to
+        # enter_dmz_mode's dismiss hook, which polls for the lobby and returns
+        # the moment it appears -- so a fast load now costs seconds instead of
+        # always costing two minutes, and a slow one still has room.
+        timeout_override=25.0,
         # After CONFIRM the game runs its ~12s auto-login before the lobby (and
         # its promo popups) appear. Settle long enough that the NEXT step
         # (dismiss_popups, 5s timeout) starts once the lobby is actually up.

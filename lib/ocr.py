@@ -154,11 +154,9 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
     for prep_method in ("clahe_otsu", "adaptive", "raw_otsu"):
         binary = _preprocess_variant(roi, upscale=4.0, method=prep_method)
         for psm in (11, 6, 3):
-            try:
-                raw = _ocr_text(binary, psm)
-            except Exception as e:
-                log.debug("tesseract %s/PSM %d failed: %s", prep_method, psm, e)
-                continue
+            # Only image_to_data is needed. The old image_to_string call still
+            # ran here even though the regex path that used it was replaced by
+            # position-based matching, so every pass paid for tesseract twice.
             try:
                 located = _ocr_timers_located(binary, psm)
             except Exception as e:
@@ -180,6 +178,13 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
                                     seconds=secs))
                 log.info("read cooldown (%s/PSM %d) at (%d,%d): %ds (~%.1fh)",
                          prep_method, psm, cx, cy, secs, secs / 3600)
+            # Nine passes exist to catch a badge one binarisation misses; once
+            # every card is accounted for there is nothing left to catch, and
+            # the remaining passes are pure latency on the critical path.
+            if len(out) >= EXPECTED_TIMER_COUNT:
+                break
+        if len(out) >= EXPECTED_TIMER_COUNT:
+            break
     if len(out) < EXPECTED_TIMER_COUNT:
         log.warning(
             "OCR found only %d cooldown timer(s), expected %d — daemon will still use "

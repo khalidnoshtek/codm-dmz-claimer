@@ -87,3 +87,43 @@ def find_all(
             continue
         kept.append(Match(score=c["score"], x=cx, y=cy, w=tpl.shape[1], h=tpl.shape[0]))
     return kept
+
+def find_close_button(screen_bgr, templates_dir, threshold: float = 0.975):
+    """Locate a CODM modal's close X, or None.
+
+    Plain template matching does not work for this button. The X glyph is
+    identical everywhere, but it is drawn on whatever the modal's header
+    happens to be -- gold on the Special Offer promo, dark olive on a match
+    invite -- so a pixel template cut from one modal scores near zero on the
+    next. (Measured: the previous 10_popup_close_x.png template matched none
+    of the three real popups, even down at a 0.68 threshold, which is why
+    popup handling had been falling back to blind BACK presses.)
+
+    Masked matching compares only the stroke pixels and ignores everything
+    between them, so the background stops mattering. The separation is wide:
+    real close buttons score 0.987-1.000 while the best false positive on a
+    clean lobby or the LST Hunt page scores 0.966.
+
+    Returning the X (rather than pressing BACK) also matters for safety: a
+    match invite has an ACCEPT button, and BACK on a clear lobby opens the
+    quit dialog.
+    """
+    import cv2
+    import numpy as np
+    tpl_path = Path(templates_dir) / "11_close_x.png"
+    mask_path = Path(templates_dir) / "11_close_x_mask.png"
+    if not tpl_path.exists() or not mask_path.exists():
+        return None
+    tpl = cv2.imread(str(tpl_path))
+    mask = cv2.imread(str(mask_path), 0)
+    if tpl is None or mask is None:
+        return None
+    if screen_bgr.shape[0] < tpl.shape[0] or screen_bgr.shape[1] < tpl.shape[1]:
+        return None
+    res = cv2.matchTemplate(screen_bgr, tpl, cv2.TM_CCORR_NORMED, mask=mask)
+    res = np.nan_to_num(res, nan=0.0, posinf=0.0, neginf=0.0)
+    _, best, _, loc = cv2.minMaxLoc(res)
+    if best < threshold:
+        return None
+    return Match(x=loc[0] + tpl.shape[1] // 2, y=loc[1] + tpl.shape[0] // 2,
+                 w=tpl.shape[1], h=tpl.shape[0], score=float(best))

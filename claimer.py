@@ -343,14 +343,18 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     # dismissing popups. enter_dmz_mode gets the big budget because the lobby
     # takes ~40s to render after login ("Getting Version Info"); rushing past
     # that was the real cause of the dmz_lobby_check failures.
-    _hook_budget = {"enter_dmz_mode": 60.0, "dmz_lobby_check": 25.0,
+    # enter_dmz_mode carries the cold-load wait now that login_popup_confirm no
+    # longer does (see lib/flow.py). This budget is a ceiling, not a cost: the
+    # hook returns as soon as the lobby renders, so raising it only helps a
+    # slow load and never slows a fast one.
+    _hook_budget = {"enter_dmz_mode": 150.0, "dmz_lobby_check": 25.0,
                     "tap_black_market": 15.0, "tap_home_icon": 6.0}
 
     def _dismiss_hook(step) -> None:
         if dry_run or step.name not in _dismiss_before:
             return
         try:
-            from lib.vision import find_all, find_template
+            from lib.vision import find_all, find_template, find_close_button
             import cv2 as _cv2
             import pytesseract as _pt
             thr = float(cfg.get("match_threshold", 0.82))
@@ -386,10 +390,23 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                 # Target visible -> lobby/screen is ready and clear, stop.
                 if step.template and find_template(screen, tpl, threshold=thr):
                     return
-                # 1) Promo banners (battle-pass, event) — top-right close X.
+                # 1) Any modal with a close X — promos, event banners, friend
+                #    match invites. Masked matching finds the X whatever header
+                #    it is drawn on; the old plain template matched none of the
+                #    real popups, so these used to fall through to the BACK
+                #    branch below. Closing by the X also avoids the buttons
+                #    inside: a match invite's ACCEPT would drop the account into
+                #    a live game.
+                x_hit = find_close_button(screen, TEMPLATES)
+                if x_hit:
+                    log.info("popup dismiss: close-X at (%d,%d) score=%.3f",
+                             x_hit.x, x_hit.y, x_hit.score)
+                    device.tap(x_hit.x, x_hit.y)
+                    time.sleep(1.0)
+                    continue
                 hits = find_all(screen, _close_x, threshold=thr)
                 if hits:
-                    log.info("popup dismiss: close-X at (%d,%d)", hits[0].x, hits[0].y)
+                    log.info("popup dismiss: legacy close-X at (%d,%d)", hits[0].x, hits[0].y)
                     device.tap(hits[0].x, hits[0].y)
                     time.sleep(0.9)
                     continue
