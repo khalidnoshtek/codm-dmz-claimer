@@ -1,16 +1,5 @@
 [
   {
-    "epoch": 1789191586,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      3.1,
-      7.1
-    ]
-  },
-  {
     "epoch": 1789195971,
     "ok": true,
     "result": "nothing claimable",
@@ -1040,6 +1029,14 @@
   },
   {
     "epoch": 1789795400,
+    "ok": false,
+    "result": "NEEDS LOGIN",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789800047,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
