@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1789812143,
-    "source": "remembered (min cooldown 77039s, found 1/3) -> low-confidence cap"
+    "epoch": 1789811670,
+    "source": "remembered (min cooldown 76803s, found 1/3) -> low-confidence cap"
   },
-  "updated_at_epoch": 1789808023
+  "updated_at_epoch": 1789808259
 }
