@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1789870565,
-    "ok": false,
-    "result": "Failed",
-    "detail": "couldn't reach the DMZ lobby (screen unreadable)",
-    "claims": 0,
+    "epoch": 1789882058,
+    "ok": true,
+    "result": "CLAIMED 3 reward(s)",
+    "detail": null,
+    "claims": 3,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1789881825
+  "next_run": {
+    "epoch": 1789887478,
+    "source": "config period -> blind cap"
+  },
+  "updated_at_epoch": 1789882058
 }
