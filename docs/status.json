@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1789911455,
+    "epoch": 1789914915,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -11,9 +11,5 @@
       13.9
     ]
   },
-  "next_run": {
-    "epoch": 1789914912,
-    "source": "OCR (min cooldown 14084s, found 2/3) -> low-confidence cap"
-  },
-  "updated_at_epoch": 1789911455
+  "updated_at_epoch": 1789914915
 }
