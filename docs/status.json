@@ -1,12 +1,12 @@
 {
   "state": "running",
   "last_run": {
-    "epoch": 1789869260,
+    "epoch": 1789869914,
     "ok": false,
     "result": "Failed",
     "detail": "couldn't reach the DMZ lobby (screen unreadable)",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1789869260
+  "updated_at_epoch": 1789869914
 }
