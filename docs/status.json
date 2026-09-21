@@ -1,20 +1,16 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1790006092,
+    "epoch": 1790010126,
     "ok": true,
     "result": "CLAIMED 2 reward(s)",
     "detail": null,
     "claims": 2,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1790010123,
-    "source": "remembered (min cooldown 27847s, found 2/3) -> low-confidence cap"
-  },
   "diagnosis": {
     "epoch": 1790005268,
     "text": "DIAGNOSIS: When inventory is full, CODM inserts a secondary \"Inventory full \u2014 Item has been sent to Mail / TAP TO CONTINUE\" popup that appears *after* the standard reward animation \u2014 too late for the existing `dismiss_after_tap` taps at `(200,200)` to catch it; the patience-round BACK recovery never fires because `total_tapped == expected` (1 of 1), so the popup sits unclosed for all 3 empty patience rounds and then blocks cooldown OCR too."
   },
-  "updated_at_epoch": 1790006092
+  "updated_at_epoch": 1790010126
 }
