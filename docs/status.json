@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
     "epoch": 1789991651,
     "ok": true,
@@ -8,9 +8,5 @@
     "claims": 3,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1789997401,
-    "source": "config period -> blind cap"
-  },
-  "updated_at_epoch": 1789991651
+  "updated_at_epoch": 1790004980
 }
