@@ -1,76 +1,5 @@
 [
   {
-    "epoch": 1789362757,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.2,
-      1.6,
-      6.1
-    ]
-  },
-  {
-    "epoch": 1789363725,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      7.5,
-      8.0
-    ]
-  },
-  {
-    "epoch": 1789368065,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.1,
-      4.7,
-      6.8
-    ]
-  },
-  {
-    "epoch": 1789370247,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM crashed / closed (not in foreground)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789376387,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789381904,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.7,
-      0.8,
-      2.9
-    ]
-  },
-  {
-    "epoch": 1789385381,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1789390927,
     "ok": true,
     "result": "CLAIMED 1",
@@ -978,6 +907,14 @@
     "result": "CLAIMED 1",
     "detail": null,
     "claims": 1,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1789991651,
+    "ok": true,
+    "result": "CLAIMED 3",
+    "detail": null,
+    "claims": 3,
     "cooldowns_hours": []
   }
 ]
