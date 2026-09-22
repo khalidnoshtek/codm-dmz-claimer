@@ -285,6 +285,23 @@ def _handle_stop(signum, _frame):
     global _stopping
     logging.getLogger("daemon").info("Received signal %s — finishing current cycle then exiting.", signum)
     _stopping = True
+    # Say so on the dashboard immediately. A cycle interrupted mid-flight never
+    # reaches its own "sleeping" publish, so whatever was published last stays
+    # there -- which means the dashboard kept showing "claimer running", and
+    # kept warning against playing, the whole time it was stopped.
+    try:
+        cfg = load_config()
+        if bool(cfg.get("publish_status", True)):
+            try:
+                prev = json.loads((ROOT / "docs" / "status.json").read_text())
+            except Exception:
+                prev = {}
+            status = {"state": "stopped"}
+            if isinstance(prev.get("last_run"), dict):
+                status["last_run"] = prev["last_run"]
+            publish_status(status, ROOT, push=bool(cfg.get("publish_status_push", True)))
+    except Exception:
+        pass
 
 
 def loop_forever() -> int:

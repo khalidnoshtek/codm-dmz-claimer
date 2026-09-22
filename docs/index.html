@@ -282,6 +282,7 @@ function tick(){
   const isLogin=data.last_run&&data.last_run.result==='NEEDS LOGIN';
   let state,icon,label,count,when,sub,subIcon;
   if(data.state==='running'){state='run';icon='loader';label='Claimer running';count='ACTIVE';when='the AVD is in use right now';sub='Please don’t play until it finishes';subIcon='gamepad-2';}
+  else if(data.state==='stopped'){state='safe';icon='power';label='Claimer stopped';count='OFF';when='not running — nothing is scheduled';sub='Safe to play — CODM will not be touched';subIcon='check';}
   else if(isLogin){state='login';icon='log-in';label='Sign-in needed';count='LOGIN';when='CODM logged out of your account';sub='Open CODM on the Mac and sign in';subIcon='alert-triangle';}
   else if(!nr){state='safe';icon=stale?'wifi-off':'moon';label=stale?'Offline':'Idle';count=stale?'OFFLINE':'—';when=stale?'daemon hasn’t reported in >3h':'waiting for first cycle';sub='';}
   else{
