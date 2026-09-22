@@ -1,7 +1,7 @@
 {
   "state": "running",
   "last_run": {
-    "epoch": 1790101894,
+    "epoch": 1790102507,
     "ok": true,
     "result": "CLAIMED 2 reward(s)",
     "detail": null,
@@ -15,5 +15,5 @@
     "epoch": 1790070773,
     "text": "DIAGNOSIS: The second dismiss-tap at (200,200) navigates away from LST Hunt because that coordinate falls on the DAILY SPECIAL OFFERS sidebar tab; OCR then runs on the wrong screen and reads 0 cooldown timers, forcing the daemon to use stale remembered cooldowns instead of fresh ones."
   },
-  "updated_at_epoch": 1790101894
+  "updated_at_epoch": 1790102507
 }
