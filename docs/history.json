@@ -1,53 +1,5 @@
 [
   {
-    "epoch": 1789446980,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789453927,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM crashed / closed (not in foreground)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1789459397,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.5,
-      2.2
-    ]
-  },
-  {
-    "epoch": 1789461396,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      1.6
-    ]
-  },
-  {
-    "epoch": 1789465062,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.6,
-      3.0
-    ]
-  },
-  {
     "epoch": 1789470018,
     "ok": false,
     "result": "Failed",
@@ -901,5 +853,16 @@
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1790071316,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      1.1,
+      7.3
+    ]
   }
 ]
