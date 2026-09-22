@@ -1,19 +1,23 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1790074845,
+    "epoch": 1790075030,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
     "claims": 0,
     "cooldowns_hours": [
-      1.0,
-      7.3
+      0.0,
+      6.3
     ]
+  },
+  "next_run": {
+    "epoch": 1790075090,
+    "source": "OCR (min cooldown 174s, found 2/3)"
   },
   "diagnosis": {
     "epoch": 1790070773,
     "text": "DIAGNOSIS: The second dismiss-tap at (200,200) navigates away from LST Hunt because that coordinate falls on the DAILY SPECIAL OFFERS sidebar tab; OCR then runs on the wrong screen and reads 0 cooldown timers, forcing the daemon to use stale remembered cooldowns instead of fresh ones."
   },
-  "updated_at_epoch": 1790074845
+  "updated_at_epoch": 1790075030
 }
