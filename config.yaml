@@ -190,3 +190,7 @@ session_conflict_retry_seconds: 2700
 # How long to hold off a claim cycle after you open the AVD from the dashboard
 # to sign in. A cycle starting mid-sign-in would fight you for the screen.
 signin_hold_seconds: 1800
+
+# A "Run claimer now" press made while the daemon was down is still honoured
+# if it is newer than this when the daemon starts. Older presses are ignored.
+honour_pending_trigger_seconds: 1800

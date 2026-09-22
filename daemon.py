@@ -312,10 +312,22 @@ def loop_forever() -> int:
 
     consecutive_failures = 0
     prev_summary: dict | None = None
+    cfg0 = load_config()
     # Baseline the trigger/delay markers to whatever's already on the remote so
     # we don't act on a stale request the moment the daemon (re)starts.
     _ctl0 = read_remote_control(ROOT)
     last_trigger = _ctl0["requested_at"]
+    # Baselining exists so a restart does not re-run an old request. But it
+    # also swallowed a NEW one: press "Run claimer now" while the daemon is
+    # down (stopped for a game, or the Mac was off) and the request is written
+    # fine, then discarded the moment the daemon comes back -- the button just
+    # appears to do nothing. Honour a press that is still recent.
+    _pending_age = time.time() - last_trigger
+    _pending_window = float(cfg0.get("honour_pending_trigger_seconds", 1800))
+    if last_trigger and 0 <= _pending_age <= _pending_window:
+        log.info("A run was requested %.0f min before startup — honouring it",
+                 _pending_age / 60)
+        last_trigger = 0
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
     last_fix_at = _ctl0.get("fix_requested_at", 0)
