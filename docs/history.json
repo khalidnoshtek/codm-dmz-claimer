@@ -1,13 +1,5 @@
 [
   {
-    "epoch": 1789539132,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM crashed / closed (not in foreground)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1789550557,
     "ok": false,
     "result": "NEEDS LOGIN",
@@ -924,6 +916,18 @@
       2.8,
       4.0,
       5.9
+    ]
+  },
+  {
+    "epoch": 1790148581,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      0.0,
+      1.2,
+      3.1
     ]
   }
 ]
