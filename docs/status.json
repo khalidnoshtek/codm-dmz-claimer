@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1790178877,
+    "epoch": 1790179066,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1790178877
+  "next_run": {
+    "epoch": 1790184744,
+    "source": "config period -> blind cap"
+  },
+  "updated_at_epoch": 1790179066
 }
