@@ -1,16 +1,23 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1790223457,
+    "epoch": 1790223663,
     "ok": true,
-    "result": "CLAIMED 3 reward(s)",
+    "result": "nothing claimable",
     "detail": null,
-    "claims": 3,
-    "cooldowns_hours": []
+    "claims": 0,
+    "cooldowns_hours": [
+      3.8,
+      7.8
+    ]
+  },
+  "next_run": {
+    "epoch": 1790226805,
+    "source": "OCR (min cooldown 13830s, found 2/3) -> low-confidence cap"
   },
   "diagnosis": {
     "epoch": 1790223361,
     "text": "DIAGNOSIS: The `dismiss_after_tap` coordinate (200, 200) accidentally hits the \"DAILY SPECIAL OFFERS\" tab in the Underground Offers left sidebar after the final claim, silently switching away from LST Hunt before OCR runs \u2014 so OCR reads the wrong screen and finds 0 cooldown timers; the \"unknown\" failure reason is the dashboard rendering `reason: null` (only populated on real errors) as `'unknown'` on what was actually a successful 3-claim run."
   },
-  "updated_at_epoch": 1790223457
+  "updated_at_epoch": 1790223663
 }
