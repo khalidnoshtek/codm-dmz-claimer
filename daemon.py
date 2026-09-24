@@ -501,6 +501,24 @@ def loop_forever() -> int:
                          "capping sleep at %.0fs", blind_sleep)
                 base = blind_sleep
                 source = f"{source} -> blind cap"
+        elif from_cache:
+            # The schedule came from a remembered reading because THIS cycle
+            # read nothing, so there is no fresh evidence behind it. Carrying
+            # the saved timer count across made a stale cache look as certain
+            # as a live 3/3 read and unlocked the full 6h ceiling: on
+            # 2026-09-24 a post-claim cycle read 0/3, fell back to a cache
+            # saying 10h, and slept 5.9h while cards were actually coming up
+            # -- the run before it had been claiming roughly hourly.
+            #
+            # The remembered time is still the best guess for WHEN, so keep
+            # using it; just re-check within the hour instead of trusting it
+            # for six.
+            if base > low_conf_sleep:
+                log.info("Schedule came from a remembered reading (OCR read nothing "
+                         "this cycle): capping sleep at %.0fs instead of %.0fs",
+                         low_conf_sleep, max_sleep)
+                base = low_conf_sleep
+                source = f"{source} -> unverified cap"
         elif ocr_count < 3 and ocr_seconds:
             tighter = low_conf_sleep
             if base > tighter:
