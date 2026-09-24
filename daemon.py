@@ -322,12 +322,24 @@ def loop_forever() -> int:
     # down (stopped for a game, or the Mac was off) and the request is written
     # fine, then discarded the moment the daemon comes back -- the button just
     # appears to do nothing. Honour a press that is still recent.
+    # Recent is not enough on its own: a request that has ALREADY been served
+    # is still recent, so a restart soon after one would run the same cycle a
+    # second time (it did -- the 23:24 press re-fired on the 23:29 restart).
+    # A cycle that finished after the request was made has served it.
     _pending_age = time.time() - last_trigger
     _pending_window = float(cfg0.get("honour_pending_trigger_seconds", 1800))
-    if last_trigger and 0 <= _pending_age <= _pending_window:
-        log.info("A run was requested %.0f min before startup — honouring it",
-                 _pending_age / 60)
+    _served_at = 0
+    try:
+        _served_at = int(json.loads((ROOT / "docs" / "status.json").read_text())
+                         .get("last_run", {}).get("epoch", 0) or 0)
+    except Exception:
+        pass
+    if last_trigger and 0 <= _pending_age <= _pending_window and _served_at < last_trigger:
+        log.info("A run was requested %.0f min before startup and no cycle has run "
+                 "since — honouring it", _pending_age / 60)
         last_trigger = 0
+    elif last_trigger and _served_at >= last_trigger:
+        log.info("Ignoring the pending request: a cycle already ran after it")
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
     last_fix_at = _ctl0.get("fix_requested_at", 0)
