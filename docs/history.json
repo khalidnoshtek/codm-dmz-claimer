@@ -1,15 +1,5 @@
 [
   {
-    "epoch": 1789723352,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      4.8
-    ]
-  },
-  {
     "epoch": 1789739461,
     "ok": true,
     "result": "nothing claimable",
@@ -963,5 +953,16 @@
     "detail": null,
     "claims": 2,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1790333372,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      1.6,
+      2.5
+    ]
   }
 ]
