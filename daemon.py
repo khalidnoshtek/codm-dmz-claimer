@@ -27,7 +27,7 @@ from claimer import claim_once, load_config, setup_logging
 from lib.adb import AdbDevice, LOCKED_AVD
 from lib.wake import schedule_wake, cancel_wakes
 from lib import cooldowns
-from lib.status import publish_status, read_remote_control, record_run
+from lib.status import publish_status, read_remote_control, record_run, prune_logs
 
 
 _last_diagnosis: dict | None = None  # {"epoch": int, "text": str} shown on the dashboard
@@ -552,6 +552,7 @@ def loop_forever() -> int:
         # + next-run time for the dashboard countdown.
         if not skip_cycle:
             record_run(summary, ROOT, retention_days=int(cfg.get("history_retention_days", 7)))
+            prune_logs(ROOT, retention_days=int(cfg.get("log_retention_days", 7)))
         _publish(cfg, "sleeping", summary=summary, wake_at=wake_at, source=source)
         prev_summary = summary if isinstance(summary, dict) else prev_summary
         skip_cycle = False   # one-shot: only the start-up pass may skip

@@ -154,3 +154,41 @@ def read_remote_control(repo_root: Path) -> dict:
         }
     except Exception:
         return dict(_zero)
+
+def prune_logs(repo_root: Path, retention_days: int = 7) -> None:
+    """Delete run screenshots and per-cycle summaries older than
+    retention_days.
+
+    Nothing was ever removing these. Each cycle writes a full-resolution
+    3120x1440 PNG (~2.5MB) and a summary, so logs/ had reached 2.6GB across
+    1847 files -- 820 screenshots alone -- while history.json was already
+    pruning itself to 7 days. Matching that window keeps recent runs
+    diagnosable (the cooldown-OCR dumps are how the timer bugs were found)
+    without the directory growing without bound.
+
+    Only the dated per-cycle artefacts are touched: the rolling .log files
+    and cooldowns.json are left alone. Best-effort; never raises into a
+    cycle."""
+    try:
+        logs = repo_root / "logs"
+        if not logs.is_dir():
+            return
+        cutoff = time.time() - max(1, int(retention_days)) * 86400
+        removed = freed = 0
+        for f in logs.iterdir():
+            if not f.is_file():
+                continue
+            if f.suffix == ".png" or f.name.endswith("_summary.json"):
+                try:
+                    st = f.stat()
+                    if st.st_mtime < cutoff:
+                        freed += st.st_size
+                        f.unlink()
+                        removed += 1
+                except Exception:
+                    continue
+        if removed:
+            log.info("Pruned %d log file(s) older than %dd (%.0f MB freed)",
+                     removed, retention_days, freed / 1048576)
+    except Exception as e:
+        log.warning("prune_logs failed (non-fatal): %s", e)

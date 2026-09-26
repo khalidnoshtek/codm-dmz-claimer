@@ -194,3 +194,7 @@ signin_hold_seconds: 1800
 # A "Run claimer now" press made while the daemon was down is still honoured
 # if it is newer than this when the daemon starts. Older presses are ignored.
 honour_pending_trigger_seconds: 1800
+
+# How long to keep per-cycle screenshots and summaries in logs/. They are
+# ~2.5MB each and nothing removed them before, so logs/ had reached 2.6GB.
+log_retention_days: 7
