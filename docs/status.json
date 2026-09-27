@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1790525035,
+    "epoch": 1790527138,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -12,9 +12,5 @@
       2.0
     ]
   },
-  "next_run": {
-    "epoch": 1790527132,
-    "source": "OCR (burst cluster of 2 cooldowns, min=2239s max=2395s, found 3/3)"
-  },
-  "updated_at_epoch": 1790525035
+  "updated_at_epoch": 1790527138
 }
