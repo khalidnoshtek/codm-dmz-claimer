@@ -1,13 +1,5 @@
 [
   {
-    "epoch": 1789870565,
-    "ok": false,
-    "result": "Failed",
-    "detail": "couldn't reach the DMZ lobby (screen unreadable)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1789882058,
     "ok": true,
     "result": "CLAIMED 3",
@@ -1034,6 +1026,16 @@
       0.7,
       2.8,
       3.0
+    ]
+  },
+  {
+    "epoch": 1790477999,
+    "ok": true,
+    "result": "CLAIMED 3",
+    "detail": null,
+    "claims": 3,
+    "cooldowns_hours": [
+      1.3
     ]
   }
 ]
