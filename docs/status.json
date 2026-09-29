@@ -1,20 +1,16 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1790702338,
+    "epoch": 1790706442,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1790706440,
-    "source": "remembered (min cooldown 8956s, found 3/3) -> unverified cap"
-  },
   "diagnosis": {
     "epoch": 1790673402,
     "text": "DIAGNOSIS: The cycle completed correctly with nothing to claim, but two bugs compound: (1) `run_step`'s tap_all fast-break exits only the inner loop, so it polls the screen for the full 20s even when all badges are on cooldown; (2) `read_cooldowns_with_retry`'s cross-attempt value dedup uses a 25s-floor/5%-relative tolerance that merges the two ~01:20h wolves (only 20s apart) into one timer, causing a false \"low-confidence 2/3\" read that forces the daemon to wake hourly instead of waiting for the true soonest cooldown."
   },
-  "updated_at_epoch": 1790702338
+  "updated_at_epoch": 1790706442
 }
