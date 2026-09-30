@@ -1224,5 +1224,13 @@
       2.3,
       7.0
     ]
+  },
+  {
+    "epoch": 1790800053,
+    "ok": true,
+    "result": "CLAIMED 1",
+    "detail": null,
+    "claims": 1,
+    "cooldowns_hours": []
   }
 ]
