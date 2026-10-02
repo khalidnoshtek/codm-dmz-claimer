@@ -9,12 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1790956691,
-    "source": "remembered (min cooldown 5573s, found 3/3) -> unverified cap"
+    "epoch": 1790958488,
+    "source": "remembered (min cooldown 3164s, found 3/3)"
   },
-  "diagnosis": {
-    "epoch": 1790951901,
-    "text": "DIAGNOSIS: The claimer is working correctly \u2014 all 3 LST Hunt cards were on cooldown so there was nothing to claim; the \"unknown\" failure reason is a false alarm caused by `_diagnosis_prompt()` in `daemon.py` falling back to `\"unknown\"` when `fail_detail` and `reason` are both `None` on a successful no-claim cycle (`ok=True`)."
-  },
-  "updated_at_epoch": 1790953150
+  "updated_at_epoch": 1790955559
 }
