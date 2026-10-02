@@ -1,16 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1790929032,
+    "epoch": 1790929231,
     "ok": true,
-    "result": "nothing claimable",
+    "result": "CLAIMED 1 reward(s)",
     "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      2.3,
-      4.9,
-      5.8
-    ]
+    "claims": 1,
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1790929032
+  "next_run": {
+    "epoch": 1790933399,
+    "source": "remembered (min cooldown 8684s, found 3/3) -> unverified cap"
+  },
+  "updated_at_epoch": 1790929231
 }
