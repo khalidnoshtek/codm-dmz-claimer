@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1790952170,
+    "epoch": 1790952173,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -12,13 +12,9 @@
       11.1
     ]
   },
-  "next_run": {
-    "epoch": 1790952528,
-    "source": "OCR (min cooldown 543s, found 3/3)"
-  },
   "diagnosis": {
     "epoch": 1790951901,
     "text": "DIAGNOSIS: The claimer is working correctly \u2014 all 3 LST Hunt cards were on cooldown so there was nothing to claim; the \"unknown\" failure reason is a false alarm caused by `_diagnosis_prompt()` in `daemon.py` falling back to `\"unknown\"` when `fail_detail` and `reason` are both `None` on a successful no-claim cycle (`ok=True`)."
   },
-  "updated_at_epoch": 1790952170
+  "updated_at_epoch": 1790952173
 }
