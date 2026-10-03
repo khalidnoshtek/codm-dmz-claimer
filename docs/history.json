@@ -1,120 +1,5 @@
 [
   {
-    "epoch": 1790359260,
-    "ok": false,
-    "result": "Failed",
-    "detail": "couldn't reach the DMZ lobby (screen unreadable)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1790363565,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      1.2,
-      7.7,
-      8.4
-    ]
-  },
-  {
-    "epoch": 1790367665,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.1,
-      6.5,
-      7.2
-    ]
-  },
-  {
-    "epoch": 1790367899,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      3.0,
-      6.8,
-      7.2
-    ]
-  },
-  {
-    "epoch": 1790378390,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.1,
-      3.9,
-      4.3
-    ]
-  },
-  {
-    "epoch": 1790379165,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1790383534,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      2.5,
-      2.8
-    ]
-  },
-  {
-    "epoch": 1790387329,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      1.4,
-      1.7,
-      1.8
-    ]
-  },
-  {
-    "epoch": 1790392410,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1790393699,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      0.0,
-      3.0,
-      3.6
-    ]
-  },
-  {
-    "epoch": 1790394271,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1790398516,
     "ok": true,
     "result": "nothing claimable",
@@ -1458,6 +1343,17 @@
       1.4,
       7.1,
       8.3
+    ]
+  },
+  {
+    "epoch": 1791001956,
+    "ok": true,
+    "result": "CLAIMED 3",
+    "detail": null,
+    "claims": 3,
+    "cooldowns_hours": [
+      8.0,
+      14.0
     ]
   }
 ]
