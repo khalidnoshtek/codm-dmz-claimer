@@ -1,16 +1,20 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1791202094,
+    "epoch": 1791202307,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
   },
+  "next_run": {
+    "epoch": 1791206089,
+    "source": "remembered (min cooldown 5523s, found 3/3) -> unverified cap"
+  },
   "diagnosis": {
     "epoch": 1791189822,
     "text": "DIAGNOSIS: No actual failure occurred \u2014 all 3 LST Hunt rewards were legitimately on cooldown (confirmed by screenshot timers); the \"failure reason: unknown\" is a false alarm from the analysis prompt builder mapping `summary[\"reason\"]=None` (only set on hard failures) to `\"unknown\"` instead of checking `ok=True` first."
   },
-  "updated_at_epoch": 1791202094
+  "updated_at_epoch": 1791202307
 }
