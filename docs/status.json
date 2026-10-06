@@ -12,8 +12,8 @@
     ]
   },
   "next_run": {
-    "epoch": 1791270050,
-    "source": "OCR (min cooldown 12211s, found 2/3) -> low-confidence cap"
+    "epoch": 1791274414,
+    "source": "remembered (min cooldown 7462s, found 2/3) -> unverified cap"
   },
-  "updated_at_epoch": 1791266148
+  "updated_at_epoch": 1791270897
 }
