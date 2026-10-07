@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
     "epoch": 1791346369,
     "ok": true,
@@ -11,9 +11,5 @@
       4.0
     ]
   },
-  "next_run": {
-    "epoch": 1791354649,
-    "source": "remembered (min cooldown 6485s, found 2/3) -> unverified cap"
-  },
-  "updated_at_epoch": 1791350664
+  "updated_at_epoch": 1791354651
 }
