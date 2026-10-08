@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1791440362,
+    "epoch": 1791440559,
     "ok": true,
     "result": "CLAIMED 3 reward(s)",
     "detail": null,
@@ -14,5 +14,9 @@
     "epoch": 1791444285,
     "source": "OCR (min cooldown 14356s, found 1/3) -> low-confidence cap"
   },
-  "updated_at_epoch": 1791440362
+  "diagnosis": {
+    "epoch": 1791440559,
+    "text": "DIAGNOSIS: The BACK+re-entry cycle after round 2 caused a false-positive double-match on re-entry (round 4 found 2 badges where only 1 was genuinely claimable), inflating `expected` from 3 to 4 and consuming one of the 3 `max_taps` slots on a phantom tap; when the real remaining badge was found in round 6, `total_tapped` had already reached the `max_taps=3` cap and the loop exited \u2014 leaving 1 claimable badge unclaimed as confirmed by the screenshot showing \"Tap to Claim >\" still present alongside only 2 cooldown timers."
+  },
+  "updated_at_epoch": 1791440559
 }
