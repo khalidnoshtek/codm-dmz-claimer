@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1791654820,
+    "epoch": 1791655240,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -13,12 +13,12 @@
     ]
   },
   "next_run": {
-    "epoch": 1791655424,
-    "source": "OCR (burst cluster of 2 cooldowns, min=780s max=1022s, found 3/3)"
+    "epoch": 1791659024,
+    "source": "manual reschedule"
   },
   "diagnosis": {
     "epoch": 1791550418,
     "text": "DIAGNOSIS: The last cycle completed successfully (claimed 2 rewards); the \"unknown\" failure reason is a false alarm because `_diagnosis_prompt()` in daemon.py:38 falls through to the `\"unknown\"` default without first checking `summary[\"ok\"]`, so a successful run whose `fail_detail` and `reason` are both None always appears to have an unknown failure on the dashboard."
   },
-  "updated_at_epoch": 1791654820
+  "updated_at_epoch": 1791655240
 }
