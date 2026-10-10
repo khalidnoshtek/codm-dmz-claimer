@@ -1,49 +1,5 @@
 [
   {
-    "epoch": 1791010283,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      5.7,
-      11.7
-    ]
-  },
-  {
-    "epoch": 1791014558,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      4.5,
-      10.5
-    ]
-  },
-  {
-    "epoch": 1791018174,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      3.5,
-      9.5
-    ]
-  },
-  {
-    "epoch": 1791021762,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      2.5,
-      8.5
-    ]
-  },
-  {
     "epoch": 1791026135,
     "ok": true,
     "result": "nothing claimable",
@@ -1249,5 +1205,13 @@
       4.8,
       7.4
     ]
+  },
+  {
+    "epoch": 1791626808,
+    "ok": true,
+    "result": "CLAIMED 1",
+    "detail": null,
+    "claims": 1,
+    "cooldowns_hours": []
   }
 ]
