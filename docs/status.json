@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "stopped",
   "last_run": {
     "epoch": 1791747035,
     "ok": true,
@@ -8,9 +8,5 @@
     "claims": 1,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1791750990,
-    "source": "remembered (min cooldown 7168s, found 3/3) -> unverified cap"
-  },
-  "updated_at_epoch": 1791747035
+  "updated_at_epoch": 1791749694
 }
