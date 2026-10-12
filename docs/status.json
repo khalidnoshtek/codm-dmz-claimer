@@ -1,16 +1,23 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1791779357,
+    "epoch": 1791779554,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
     "claims": 0,
-    "cooldowns_hours": []
+    "cooldowns_hours": [
+      2.8,
+      3.8
+    ]
+  },
+  "next_run": {
+    "epoch": 1791783656,
+    "source": "OCR (min cooldown 10054s, found 2/3) -> low-confidence cap"
   },
   "diagnosis": {
     "epoch": 1791779051,
     "text": "DIAGNOSIS: The second `dismiss_after_tap` at (200,200) hit the DAILY SPECIAL OFFERS sidebar tab (located at ~(146, \u2264280)) after the \"you got X\" popup had already closed on the first tap, silently switching away from LST HUNT so the cooldown OCR ran on the wrong screen and read zero timers."
   },
-  "updated_at_epoch": 1791779357
+  "updated_at_epoch": 1791779554
 }
