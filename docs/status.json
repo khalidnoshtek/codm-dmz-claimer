@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1791895107,
+    "epoch": 1791898998,
     "ok": false,
     "result": "Failed",
     "detail": "couldn't reach the DMZ lobby (screen unreadable)",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1791898996,
-    "source": "remembered (min cooldown 11753s, found 3/3) -> unverified cap"
-  },
-  "updated_at_epoch": 1791895107
+  "updated_at_epoch": 1791898998
 }
