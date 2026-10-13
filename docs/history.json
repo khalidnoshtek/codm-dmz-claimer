@@ -1140,5 +1140,13 @@
     "detail": "couldn't reach the DMZ lobby (screen unreadable)",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1791902954,
+    "ok": false,
+    "result": "Failed",
+    "detail": "couldn't reach the DMZ lobby (screen unreadable)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
