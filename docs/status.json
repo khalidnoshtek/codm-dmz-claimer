@@ -1,16 +1,20 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1791963381,
+    "epoch": 1791971608,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
   },
+  "next_run": {
+    "epoch": 1791975039,
+    "source": "remembered (min cooldown 9023s, found 3/3) -> unverified cap"
+  },
   "diagnosis": {
     "epoch": 1791971325,
     "text": "DIAGNOSIS: The `dismiss-tap` fired at (200, 200) after each claim to close the reward popup is landing directly on the DAILY SPECIAL OFFERS sidebar tab (which occupies approximately x=50\u2013300, y=150\u2013300), switching the view away from LST HUNT; subsequent rounds find no claim badges because they're scanning the wrong tab, and the cooldown OCR reads 0 timers for the same reason \u2014 all from the same misplaced coordinate."
   },
-  "updated_at_epoch": 1791971425
+  "updated_at_epoch": 1791971608
 }
