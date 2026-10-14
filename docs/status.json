@@ -9,12 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1791966097,
-    "source": "remembered (min cooldown 2831s, found 3/3)"
+    "epoch": 1791974612,
+    "source": "remembered (min cooldown 9401s, found 3/3) -> unverified cap"
   },
-  "diagnosis": {
-    "epoch": 1791951994,
-    "text": "DIAGNOSIS: The dashboard's 'unknown' failure reason is a display bug \u2014 it reads the `reason` JSON field (which is `None` for all non-session-conflict outcomes) instead of `fail_detail`; separately, `_classify_failure()` is called after `emu kill` so it can never screencap a failing cycle, permanently masking the real abort cause with the generic \"screen unreadable\" fallback."
-  },
-  "updated_at_epoch": 1791963381
+  "updated_at_epoch": 1791971230
 }
