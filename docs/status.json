@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1791951862,
+    "epoch": 1791951994,
     "ok": true,
     "result": "CLAIMED 3 reward(s)",
     "detail": null,
@@ -16,5 +16,9 @@
     "epoch": 1791962393,
     "source": "OCR (min cooldown 10780s, found 3/3)"
   },
-  "updated_at_epoch": 1791951862
+  "diagnosis": {
+    "epoch": 1791951994,
+    "text": "DIAGNOSIS: The dashboard's 'unknown' failure reason is a display bug \u2014 it reads the `reason` JSON field (which is `None` for all non-session-conflict outcomes) instead of `fail_detail`; separately, `_classify_failure()` is called after `emu kill` so it can never screencap a failing cycle, permanently masking the real abort cause with the generic \"screen unreadable\" fallback."
+  },
+  "updated_at_epoch": 1791951994
 }
