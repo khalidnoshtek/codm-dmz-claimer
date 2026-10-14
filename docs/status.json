@@ -1,5 +1,5 @@
 {
-  "state": "stopped",
+  "state": "running",
   "last_run": {
     "epoch": 1791916326,
     "ok": true,
@@ -12,5 +12,5 @@
       7.8
     ]
   },
-  "updated_at_epoch": 1791918098
+  "updated_at_epoch": 1791951648
 }
