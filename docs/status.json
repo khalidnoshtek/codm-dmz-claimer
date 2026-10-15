@@ -13,8 +13,8 @@
     ]
   },
   "next_run": {
-    "epoch": 1792041014,
-    "source": "remembered (min cooldown 9857s, found 3/3) -> unverified cap"
+    "epoch": 1792052086,
+    "source": "manual reschedule"
   },
-  "updated_at_epoch": 1792037657
+  "updated_at_epoch": 1792037706
 }
