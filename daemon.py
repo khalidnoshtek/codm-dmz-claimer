@@ -369,6 +369,19 @@ def loop_forever() -> int:
         log.info("Ignoring the pending request: a cycle already ran after it")
     last_delay = _ctl0["delay_until"]
     last_run_at = _ctl0["run_at"]
+    # A hold must survive a restart. run_at is an absolute "next run at this
+    # time" instruction, but baselining it at startup made the daemon forget
+    # one that had not come due yet: restarting during a 4-hour hold silently
+    # moved the next run from 13:42 back to 10:39, straight into the game the
+    # hold existed to protect. If it is still in the future, honour it --
+    # leave it unbaselined so the first poll applies it, and do not run a
+    # start-up cycle that the hold was meant to prevent.
+    _hold_until = 0
+    if last_run_at > time.time() + 5:
+        _hold_until = last_run_at
+        last_run_at = 0
+        log.info("A hold is in effect until %s — keeping it across this restart",
+                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(_hold_until)))
     last_fix_at = _ctl0.get("fix_requested_at", 0)
     last_avd_open = _ctl0.get("avd_open_at", 0)
     last_avd_close = _ctl0.get("avd_close_at", 0)
@@ -377,6 +390,8 @@ def loop_forever() -> int:
     # way off, skip the cycle this iteration and go straight to sleeping. Only
     # ever applies to the first pass.
     skip_cycle = False
+    if _hold_until:
+        skip_cycle = True          # the hold outranks the usual start-up cycle
     _rem, _ = cooldowns.load(ROOT)
     _grace = 600  # run anyway if something unlocks within 10 min
     if _rem and _rem[0] > _grace:
@@ -577,6 +592,17 @@ def loop_forever() -> int:
             source = f"{source} -> capped at max_sleep_seconds"
         wait = max(60.0, base + random.uniform(-jitter, jitter) + backoff)
         wake_at = time.time() + wait
+        # An outstanding hold wins over whatever the cooldowns suggest. Waiting
+        # for the trigger poll to notice would leave a window where a shorter
+        # computed sleep fires first -- the exact thing the hold is there to
+        # stop. Applied once, then cleared so it cannot pin the schedule.
+        if _hold_until > wake_at:
+            wait = _hold_until - time.time()
+            wake_at = float(_hold_until)
+            source = "hold kept across restart"
+            log.info("Honouring the hold: next run %s",
+                     time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(wake_at)))
+        _hold_until = 0
         log.info("Sleeping %.0fs (source=%s, jitter=±%.0f, backoff=%ds) -> next ~ %s",
                  wait, source, jitter, backoff,
                  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(wake_at)))
