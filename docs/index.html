@@ -89,6 +89,9 @@
   /* two buttons side by side; they stack under ~340px so the labels never
      get clipped on a phone */
   .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .chips5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  @media (max-width:360px){.chips5{grid-template-columns:repeat(3,1fr)}}
+  .resume{margin-top:8px;width:100%}
   @media (max-width:340px){.pair{grid-template-columns:1fr}}
   .seg .lbl{font-size:11px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;display:flex;align-items:center;gap:6px}
   .chips{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
@@ -178,6 +181,18 @@
         <button class="btn chip post" data-adj="7200">+2h</button>
       </div>
       <button class="btn chip ready" id="readyBtn"><i data-lucide="target" class="i"></i> Run when first reward is ready</button>
+    </div>
+
+    <div class="seg">
+      <div class="lbl"><i data-lucide="gamepad-2" class="i"></i> Playing right now?</div>
+      <div class="chips5">
+        <button class="btn chip" data-play="60">1h</button>
+        <button class="btn chip" data-play="120">2h</button>
+        <button class="btn chip" data-play="180">3h</button>
+        <button class="btn chip" data-play="300">5h</button>
+        <button class="btn chip" id="playCustom">custom</button>
+      </div>
+      <button class="btn chip resume" id="resumeBtn"><i data-lucide="play-circle" class="i"></i> Resume now</button>
     </div>
 
     <div class="seg">
@@ -282,6 +297,7 @@ function tick(){
   const isLogin=data.last_run&&data.last_run.result==='NEEDS LOGIN';
   let state,icon,label,count,when,sub,subIcon;
   if(data.state==='running'){state='run';icon='loader';label='Claimer running';count='ACTIVE';when='the AVD is in use right now';sub='Please don’t play until it finishes';subIcon='gamepad-2';}
+  else if(data.state==='paused'){const left=nr?Math.max(0,nr.epoch-now):0;state='safe';icon='pause';label='Paused while you play';count=left?fmtDur(left):'PAUSED';when=nr?('claiming resumes at '+fmtClock(nr.epoch)):'claiming is paused';sub='The AVD is free — CODM is all yours';subIcon='gamepad-2';}
   else if(data.state==='stopped'){state='safe';icon='power';label='Claimer stopped';count='OFF';when='not running — nothing is scheduled';sub='Safe to play — CODM will not be touched';subIcon='check';}
   else if(isLogin){state='login';icon='log-in';label='Sign-in needed';count='LOGIN';when='CODM logged out of your account';sub='Open CODM on the Mac and sign in';subIcon='alert-triangle';}
   else if(!nr){state='safe';icon=stale?'wifi-off':'moon';label=stale?'Offline':'Idle';count=stale?'OFFLINE':'—';when=stale?'daemon hasn’t reported in >3h':'waiting for first cycle';sub='';}
@@ -345,7 +361,7 @@ async function write(patch,okMsg){
     const g=await fetch(API+'?ref=main&t='+Date.now(),{headers:H,cache:'no-store'});
     if(g.status===401||g.status===403){msg('Token invalid/expired or missing Contents:write.','err');return false;}
     const gj=await g.json();let cur={};try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
-    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,avd_open_at:0,avd_close_at:0,...cur,...patch};
+    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,avd_open_at:0,avd_close_at:0,play_until:0,...cur,...patch};
     const p=await fetch(API,{method:'PUT',headers:H,body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(body,null,2)+'\n'),sha:gj.sha,branch:'main'})});
     if(p.ok){msg(okMsg,'ok');return true;}
     const pj=await p.json().catch(()=>({}));msg('Failed: '+(pj.message||('HTTP '+p.status)),'err');return false;
@@ -364,6 +380,16 @@ async function runWhenReady(){
   let at=lr.epoch+Math.min(...lr.cooldowns_hours)*3600+120;
   if(at<now+60)at=now+60; pendingAt=at;
   await write({run_at:at},'Set to run when first reward unlocks (~'+fmtClock(at)+').');
+}
+async function pausePlay(mins){
+  const until=(Date.now()/1000|0)+Math.round(mins*60);
+  pendingAt=until;                        /* countdown reflects it immediately */
+  await write({play_until:until, requested_at:0},
+    'Paused for '+(mins>=60?(mins/60)+'h':mins+'m')+' — the AVD is freed now and claiming resumes at '+fmtClock(until)+'.');
+}
+async function resumeNow(){
+  pendingAt=0;
+  await write({play_until:0}, 'Resumed — claiming is back on its normal schedule.');
 }
 async function openAvd(){
   const b=$('avdOpenBtn'); b.disabled=true;
@@ -395,6 +421,9 @@ $('fixBtn').addEventListener('click',askClaude);
 $('runBtn').addEventListener('click',runNow);
 $('tokBtn').addEventListener('click',setTok);
 $('readyBtn').addEventListener('click',runWhenReady);
+document.querySelectorAll('.chip[data-play]').forEach(b=>b.addEventListener('click',()=>pausePlay(parseInt(b.dataset.play,10))));
+$('playCustom').addEventListener('click',()=>{const v=prompt('Pause claiming for how long?\nMinutes, or e.g. 90 for an hour and a half.','120');if(v===null)return;const m=parseFloat(v);if(!(m>0)){msg('Enter a number of minutes.','err');return;}pausePlay(m);});
+$('resumeBtn').addEventListener('click',resumeNow);
 $('avdOpenBtn').addEventListener('click',openAvd);
 $('avdCloseBtn').addEventListener('click',closeAvd);
 document.querySelectorAll('.chip[data-adj]').forEach(b=>b.addEventListener('click',()=>adjust(parseInt(b.dataset.adj,10))));

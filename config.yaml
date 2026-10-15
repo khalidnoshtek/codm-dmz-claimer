@@ -198,3 +198,7 @@ honour_pending_trigger_seconds: 1800
 # How long to keep per-cycle screenshots and summaries in logs/. They are
 # ~2.5MB each and nothing removed them before, so logs/ had reached 2.6GB.
 log_retention_days: 7
+
+# Default pause length offered by the dashboard "I am playing" button, in
+# minutes. The button can send any value; this is only the default.
+play_pause_default_minutes: 120

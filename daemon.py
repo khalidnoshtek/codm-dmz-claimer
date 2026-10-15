@@ -376,7 +376,14 @@ def loop_forever() -> int:
     # hold existed to protect. If it is still in the future, honour it --
     # leave it unbaselined so the first poll applies it, and do not run a
     # start-up cycle that the hold was meant to prevent.
+    last_play_until = _ctl0.get("play_until", 0)
     _hold_until = 0
+    # A pause is a hold with a reason: treat an unexpired one the same way so
+    # it survives a restart too.
+    if last_play_until > time.time() + 5:
+        _hold_until = last_play_until
+        log.info("Paused for play until %s — keeping that across this restart",
+                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_play_until)))
     if last_run_at > time.time() + 5:
         _hold_until = last_run_at
         last_run_at = 0
@@ -450,6 +457,17 @@ def loop_forever() -> int:
                                 "rather than kicking you off; will retry later")
                     break
                 if attempt < max_attempts and not _stopping:
+                    # Check for a pause before burning another attempt. The
+                    # loop does not poll mid-cycle, so without this a press
+                    # made during a failing cycle waits out all three retries
+                    # -- about nine minutes of the AVD holding the account
+                    # while the user is mid-match.
+                    try:
+                        if read_remote_control(ROOT).get("play_until", 0) > time.time():
+                            log.info("Paused while you play — abandoning the remaining attempts")
+                            break
+                    except Exception:
+                        pass
                     log.warning("Attempt %d/%d failed (%s) — clean-booting AVD and retrying",
                                 attempt, max_attempts, reason)
                     _publish(cfg, "running", summary=prev_summary)
@@ -673,6 +691,24 @@ def loop_forever() -> int:
                     log.info("Dashboard asked to close the sign-in AVD")
                     _close_avd()
                     _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    last_poll = time.time()
+                    continue
+                # "I'm playing" — free the AVD now and stay out of the way
+                # until play_until, then resume by itself.
+                if ctl.get("play_until", 0) != last_play_until:
+                    last_play_until = ctl.get("play_until", 0)
+                    if last_play_until > now:
+                        log.info("Paused for play until %s",
+                                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_play_until)))
+                        _ensure_avd_down(cfg)      # free it immediately
+                        deadline = float(last_play_until)
+                        source = "paused while you play"
+                        if cfg.get("sleep_mac_between_cycles", True) and deadline - now > 600:
+                            schedule_wake(datetime.now() + timedelta(seconds=deadline - now - 30))
+                        _publish(cfg, "paused", summary=summary, wake_at=deadline, source=source)
+                    else:
+                        log.info("Pause lifted — resuming normal schedule")
+                        _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
                     last_poll = time.time()
                     continue
                 if ctl["requested_at"] > last_trigger:
