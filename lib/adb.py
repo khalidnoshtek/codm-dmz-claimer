@@ -441,12 +441,32 @@ class AdbDevice:
                 return True
         return False
 
-    def launch_app(self, package: str, activity: str | None = None) -> None:
+    def launch_app(self, package: str, activity: str | None = None) -> bool:
+        """Ask CODM to start. Returns whether the launch command succeeded.
+
+        Deliberately does not raise. `monkey` exits non-zero for conditions
+        that are recoverable and already handled downstream -- the keyguard
+        being up (exit 252, "No activities found to run"), or the activity not
+        resolving yet on a cold boot. Raising here aborted the whole cycle
+        before its cleanup could run, which left the emulator alive holding
+        the CODM session; callers verify the launch with wait_app_foreground
+        anyway, so a failure is better reported than thrown."""
         if activity:
-            self._run("shell", "am", "start", "-n", f"{package}/{activity}")
+            r = self._run("shell", "am", "start", "-n", f"{package}/{activity}", check=False)
         else:
             # monkey picks the default launcher activity; quieter than `am start --user 0`
-            self._run("shell", "monkey", "-p", package, "-c", "android.intent.category.LAUNCHER", "1")
+            r = self._run("shell", "monkey", "-p", package,
+                          "-c", "android.intent.category.LAUNCHER", "1", check=False)
+        if r.returncode != 0:
+            import logging as _log
+            detail = (r.stderr or r.stdout or "")
+            if isinstance(detail, bytes):
+                detail = detail.decode("utf-8", "replace")
+            _log.getLogger(__name__).warning(
+                "launch of %s returned %s: %s", package, r.returncode,
+                " ".join(detail.split())[:160])
+            return False
+        return True
 
     def force_stop(self, package: str) -> None:
         self._run("shell", "am", "force-stop", package)

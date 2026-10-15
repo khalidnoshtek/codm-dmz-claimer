@@ -209,6 +209,33 @@ def _close_avd() -> None:
         log.warning("Could not close the AVD cleanly: %s", e)
 
 
+def _ensure_avd_down(cfg: dict) -> None:
+    """Make sure the locked AVD is not left running after a cycle.
+
+    claim_once shuts the AVD down itself, but only if it reaches its cleanup.
+    When it raises instead -- a failed `adb shell monkey` during recovery, say
+    -- the exception skips that cleanup entirely. Between retries the
+    clean-boot reset covered for it, but after the FINAL attempt nothing did,
+    so a thrown cycle left a running emulator with CODM signed in. It then sat
+    there holding the account: CODM allows one session, so the next time the
+    user played they were kicked, and the abandoned AVD looked like the script
+    "opening the game again".
+
+    Only CODM_Pixel9 is ever touched -- the serial is matched by AVD name, so
+    other emulators on the machine are left alone."""
+    if not bool(cfg.get("shutdown_between_cycles", True)):
+        return
+    log = logging.getLogger("daemon")
+    try:
+        for d in AdbDevice.list_devices():
+            if d.startswith("emulator-") and AdbDevice.emulator_avd_name(d) == LOCKED_AVD:
+                subprocess.run(["adb", "-s", d, "emu", "kill"],
+                               check=False, capture_output=True, timeout=15)
+                log.info("Safety shutdown: %s was still running after the cycle — closed it", d)
+    except Exception as e:
+        log.warning("Safety shutdown failed: %s", e)
+
+
 def _clean_boot_reset() -> None:
     """Kill the locked AVD so the next attempt cold-boots a fresh, healthy
     emulator. Recovers from a wedged state (SystemUI ANR, stuck launch) that a
@@ -426,6 +453,12 @@ def loop_forever() -> int:
             if not (isinstance(summary, dict) and summary.get("ok")) \
                     and not (isinstance(summary, dict) and summary.get("reason") == "needs_login"):
                 _auto_diagnose(cfg, summary)
+
+        # Whatever happened above -- success, clean failure, or an exception
+        # that skipped claim_once's own cleanup -- the AVD must not be left
+        # running. It holds the CODM session and kicks the player out.
+        if not skip_cycle:
+            _ensure_avd_down(cfg)
 
         # Back off a bit on repeated failures so we don't hammer a broken AVD.
         backoff = min(consecutive_failures, 4) * 300  # +5min per fail, capped at +20min
