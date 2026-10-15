@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "stopped",
   "last_run": {
     "epoch": 1792037528,
     "ok": true,
@@ -12,9 +12,5 @@
       13.8
     ]
   },
-  "next_run": {
-    "epoch": 1792052086,
-    "source": "manual reschedule"
-  },
-  "updated_at_epoch": 1792037992
+  "updated_at_epoch": 1792038207
 }
