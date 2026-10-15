@@ -1192,5 +1192,17 @@
       4.9,
       13.1
     ]
+  },
+  {
+    "epoch": 1792040293,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      2.0,
+      4.8,
+      13.0
+    ]
   }
 ]
