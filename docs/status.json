@@ -14,7 +14,7 @@
   },
   "next_run": {
     "epoch": 1792052086,
-    "source": "hold kept across restart"
+    "source": "manual reschedule"
   },
-  "updated_at_epoch": 1792037989
+  "updated_at_epoch": 1792037992
 }
