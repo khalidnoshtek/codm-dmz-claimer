@@ -1,15 +1,5 @@
 [
   {
-    "epoch": 1791404637,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      1.9
-    ]
-  },
-  {
     "epoch": 1791440359,
     "ok": true,
     "result": "CLAIMED 3",
@@ -1165,6 +1155,18 @@
       4.1,
       7.8,
       14.0
+    ]
+  },
+  {
+    "epoch": 1792036737,
+    "ok": true,
+    "result": "CLAIMED 2",
+    "detail": null,
+    "claims": 2,
+    "cooldowns_hours": [
+      3.0,
+      5.8,
+      20.0
     ]
   }
 ]
