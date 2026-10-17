@@ -1234,5 +1234,13 @@
       4.3,
       6.8
     ]
+  },
+  {
+    "epoch": 1792237766,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]

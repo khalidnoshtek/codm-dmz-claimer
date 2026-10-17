@@ -1,16 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1792237445,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
+    "epoch": 1792237766,
+    "ok": false,
+    "result": "Failed",
+    "detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
     "claims": 0,
-    "cooldowns_hours": [
-      0.4,
-      4.3,
-      6.8
-    ]
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1792237445
+  "next_run": {
+    "epoch": 1792242074,
+    "source": "remembered (min cooldown 12919s, found 3/3) -> unverified cap"
+  },
+  "updated_at_epoch": 1792237766
 }
