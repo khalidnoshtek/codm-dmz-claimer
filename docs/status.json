@@ -1,7 +1,7 @@
 {
   "state": "running",
   "last_run": {
-    "epoch": 1792237082,
+    "epoch": 1792237445,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -12,5 +12,5 @@
       6.8
     ]
   },
-  "updated_at_epoch": 1792237082
+  "updated_at_epoch": 1792237445
 }
