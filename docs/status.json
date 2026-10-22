@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
     "epoch": 1792373258,
     "ok": true,
@@ -12,9 +12,5 @@
       8.0
     ]
   },
-  "next_run": {
-    "epoch": 1792380418,
-    "source": "OCR (min cooldown 6490s, found 3/3)"
-  },
-  "updated_at_epoch": 1792373258
+  "updated_at_epoch": 1792646962
 }
