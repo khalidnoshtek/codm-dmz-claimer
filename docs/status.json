@@ -13,8 +13,8 @@
     ]
   },
   "next_run": {
-    "epoch": 1792676372,
-    "source": "OCR (min cooldown 10023s, found 3/3)"
+    "epoch": 1792680897,
+    "source": "remembered (min cooldown 9585s, found 3/3) -> unverified cap"
   },
-  "updated_at_epoch": 1792665924
+  "updated_at_epoch": 1792677436
 }
