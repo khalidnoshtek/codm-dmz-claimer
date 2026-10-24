@@ -1,25 +1,5 @@
 [
   {
-    "epoch": 1792237766,
-    "ok": false,
-    "result": "Failed",
-    "detail": "CODM wouldn't stay open on launch (slow or crashing cold start)",
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1792242263,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      2.3,
-      4.0,
-      4.5
-    ]
-  },
-  {
     "epoch": 1792250603,
     "ok": true,
     "result": "nothing claimable",
@@ -784,6 +764,17 @@
       3.7,
       4.0,
       4.5
+    ]
+  },
+  {
+    "epoch": 1792853913,
+    "ok": true,
+    "result": "nothing claimable",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": [
+      0.0,
+      0.2
     ]
   }
 ]
