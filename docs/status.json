@@ -1,16 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1792820521,
-    "ok": true,
-    "result": "nothing claimable",
+    "epoch": 1792824292,
+    "ok": false,
+    "result": "NEEDS LOGIN",
     "detail": null,
     "claims": 0,
-    "cooldowns_hours": [
-      0.9,
-      5.4,
-      10.0
-    ]
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1792824106
+  "next_run": {
+    "epoch": 1792828053,
+    "source": "remembered (min cooldown 15773s, found 3/3) -> unverified cap"
+  },
+  "updated_at_epoch": 1792824292
 }
