@@ -1,19 +1,24 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1792949951,
+    "epoch": 1792950116,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
     "claims": 0,
     "cooldowns_hours": [
-      1.9,
-      6.0
+      0.7,
+      0.8,
+      4.8
     ]
+  },
+  "next_run": {
+    "epoch": 1792953741,
+    "source": "OCR (burst cluster of 2 cooldowns, min=2668s max=2986s, found 3/3)"
   },
   "diagnosis": {
     "epoch": 1792916576,
     "text": "Failed to authenticate. API Error: 401 OAuth access token has expired. Re-authenticate to continue."
   },
-  "updated_at_epoch": 1792949951
+  "updated_at_epoch": 1792950116
 }
