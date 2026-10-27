@@ -225,3 +225,10 @@ post_claim_cooldown_seconds: 14400
 # The dashboard always sends a value, so this only covers a malformed control
 # file — it exists so a bad read can't start an unbounded session.
 grind_default_minutes: 120
+
+# How often grind.py looks at the screen while a match is running, and how
+# often it is allowed to spend an OCR pass on that frame. The emulator is
+# rendering a 3D game on the same Mac, so a 3s screencap + full-frame OCR loop
+# took host CPU the game needed and made matches stutter.
+grind_poll_seconds: 10
+grind_ocr_seconds: 30

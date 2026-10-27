@@ -44,11 +44,15 @@ from lib.status import read_remote_control, record_run            # noqa: E402
 from lib.vision import find_close_button, find_template          # noqa: E402
 
 TEMPLATES = ROOT / "templates"
+# The lobby's START button doubles as the "we are in the menus" marker, which
+# is both the most direct signal available and one template instead of two: if
+# START is on screen we can start a match, and if it is not, we are either in
+# one or on a results panel.
+#
+# The claimer's 08_home_icon.png was the obvious candidate and does not work --
+# it scores below threshold on the BR matchmaking lobby, so the first test run
+# sat in wait_for_lobby for its full 300s without ever pressing anything.
 START_TEMPLATE = TEMPLATES / "20_start_match.png"
-# The small house icon on every CODM menu screen. Its presence is the cheapest
-# reliable "we are in the menus, not in a match" signal, and it is already in
-# the template library.
-MENU_TEMPLATE = TEMPLATES / "08_home_icon.png"
 
 log = logging.getLogger("grind")
 
@@ -138,15 +142,16 @@ def stop_requested(started_at: int) -> bool:
         return False
 
 
-def _in_menus(device: AdbDevice, threshold: float) -> bool:
-    """True if CODM is showing a menu screen (lobby, mode select, results)."""
+def _at_lobby(device: AdbDevice, threshold: float) -> bool:
+    """True if the lobby's START button is on screen, i.e. we could start a
+    match right now."""
     try:
-        return find_template(device.screencap(), MENU_TEMPLATE, threshold=threshold) is not None
+        return find_template(device.screencap(), START_TEMPLATE, threshold=threshold) is not None
     except Exception:
         return False
 
 
-def _results_words(screen) -> bool:
+def _results_words(screen, scale: float = 0.5) -> bool:
     """True if this looks like a post-match results/summary screen.
 
     Checked by OCR rather than a template because CODM shows several different
@@ -159,7 +164,13 @@ def _results_words(screen) -> bool:
     try:
         import cv2
         import pytesseract
-        txt = pytesseract.image_to_string(cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)).upper()
+        gray = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
+        # Half-size before OCR. These are 3120x1440 frames and the words we are
+        # looking for are large banner text, so the detail is wasted -- and the
+        # host is busy rendering a 3D game for the emulator at the same time.
+        if scale != 1.0:
+            gray = cv2.resize(gray, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+        txt = pytesseract.image_to_string(gray).upper()
     except Exception:
         return False
     hits = ("VICTORY", "DEFEAT", "MATCH SUMMARY", "RESULTS", "CONTINUE", "EXIT",
@@ -238,17 +249,34 @@ def wait_for_lobby(device: AdbDevice, cfg: dict, deadline: float) -> bool:
     blind tapping is unsafe while a match may still be live.
     """
     thr = float(cfg.get("match_threshold", 0.82))
+    poll = float(cfg.get("grind_poll_seconds", 10))
+    ocr_every = float(cfg.get("grind_ocr_seconds", 30))
     taps = 0
+    said = 0.0
+    last_ocr = 0.0
     while time.time() < deadline and not _stopping:
+        if time.time() - said > 60:
+            said = time.time()
+            log.info("waiting for the lobby… (%ds left)", int(deadline - time.time()))
         try:
             screen = device.screencap()
         except Exception as e:
             log.warning("screencap failed (%s) — AVD may be gone", e)
             return False
-        if find_template(screen, MENU_TEMPLATE, threshold=thr):
+        if find_template(screen, START_TEMPLATE, threshold=thr):
             return True
         if _remote_stop_check():
             return False
+        # OCR is by far the most expensive thing in this loop, and for most of
+        # a match there is nothing to read: we are watching a live game for 20
+        # minutes waiting for it to end. Running it on every poll competed with
+        # the emulator for the host and was a real part of why the game felt
+        # like it had frozen. Template matching is cheap, so that keeps running
+        # at full rate; OCR only gets a look every ocr_every seconds.
+        if time.time() - last_ocr < ocr_every:
+            time.sleep(poll)
+            continue
+        last_ocr = time.time()
         if _results_words(screen):
             x_hit = find_close_button(screen, TEMPLATES)
             if x_hit:
@@ -259,9 +287,11 @@ def wait_for_lobby(device: AdbDevice, cfg: dict, deadline: float) -> bool:
                 # here because we have already confirmed the match is over.
                 device.back()
                 taps += 1
+            # A results panel is up: poll hard until it is cleared.
+            last_ocr = 0.0
             time.sleep(2.0)
             continue
-        time.sleep(3.0)
+        time.sleep(poll)
     return False
 
 
@@ -299,7 +329,7 @@ def wait_until_in_match(device: AdbDevice, cfg: dict, timeout: float) -> bool:
     deadline = time.time() + timeout
     clear = 0
     while time.time() < deadline and not _stopping:
-        if _in_menus(device, thr):
+        if _at_lobby(device, thr):
             clear = 0
         else:
             clear += 1
