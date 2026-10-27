@@ -342,7 +342,25 @@ def loop_forever() -> int:
     cfg0 = load_config()
     # Baseline the trigger/delay markers to whatever's already on the remote so
     # we don't act on a stale request the moment the daemon (re)starts.
+    # Establish the baseline from a read that actually succeeded. Straight
+    # after a Mac reboot the network is not up yet, the git fetch fails, and
+    # the old code took the resulting all-zero dict as the baseline -- which
+    # made every stale value in trigger.json look like a brand-new press. On
+    # 2026-10-27 the Mac booted at 11:04 and that replayed a requested_at from
+    # 24 Oct and a long-passed run_at, costing two needless cycles minutes
+    # after a successful claim.
     _ctl0 = read_remote_control(ROOT)
+    for _attempt in range(6):
+        if _ctl0.get("_ok"):
+            break
+        log.info("Control file unreadable at startup (network not up yet?) — "
+                 "retrying before trusting it as a baseline")
+        time.sleep(10)
+        _ctl0 = read_remote_control(ROOT)
+    _baselined = bool(_ctl0.get("_ok"))
+    if not _baselined:
+        log.warning("Could not read the control file at startup; ignoring the "
+                    "buttons until a read succeeds rather than acting on stale values")
     last_trigger = _ctl0["requested_at"]
     # Baselining exists so a restart does not re-run an old request. But it
     # also swallowed a NEW one: press "Run claimer now" while the daemon is
@@ -695,6 +713,22 @@ def loop_forever() -> int:
                     continue
                 # "I'm playing" — free the AVD now and stay out of the way
                 # until play_until, then resume by itself.
+                if not _baselined:
+                    # Startup never got a usable read. Take this one as the
+                    # baseline rather than acting on it, so stale values from
+                    # days ago cannot fire as fresh presses.
+                    if ctl.get("_ok"):
+                        last_trigger = ctl["requested_at"]
+                        last_delay = ctl["delay_until"]
+                        last_run_at = ctl["run_at"]
+                        last_fix_at = ctl.get("fix_requested_at", 0)
+                        last_avd_open = ctl.get("avd_open_at", 0)
+                        last_avd_close = ctl.get("avd_close_at", 0)
+                        last_play_until = ctl.get("play_until", 0)
+                        _baselined = True
+                        log.info("Control file readable again — baselined, buttons live from here")
+                    last_poll = time.time()
+                    continue
                 if ctl.get("play_until", 0) != last_play_until:
                     last_play_until = ctl.get("play_until", 0)
                     if last_play_until > now:
@@ -721,6 +755,13 @@ def loop_forever() -> int:
                 if ctl["run_at"] > last_run_at:
                     last_run_at = ctl["run_at"]
                     if ctl["run_at"] <= now + 5:
+                        # "Run now" only if it was asked for recently. A run_at
+                        # from hours or days ago is a spent instruction, not a
+                        # request to start this second.
+                        if now - ctl["run_at"] > float(cfg.get("stale_control_seconds", 1800)):
+                            log.info("Ignoring a run_at from %.1f h ago — stale, not a new request",
+                                     (now - ctl["run_at"]) / 3600)
+                            continue
                         log.info("Reschedule to now — running a cycle")
                         break
                     deadline = float(ctl["run_at"])

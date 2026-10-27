@@ -39,6 +39,11 @@ def tesseract_available() -> bool:
 class Cooldown:
     raw_text: str
     seconds: int
+    # Where the badge was on screen. Carried so that merging readings across
+    # retry passes can tell two cards apart the same way a single pass does:
+    # by position, not by how close the numbers are.
+    x: int = -1
+    y: int = -1
 
 
 def _crop_roi(screen_bgr: np.ndarray) -> np.ndarray:
@@ -175,7 +180,7 @@ def read_cooldowns(screen_bgr: np.ndarray) -> list[Cooldown]:
                     continue
                 seen.append((cx, cy))
                 out.append(Cooldown(raw_text=f"{secs//3600:02d}:{secs%3600//60:02d}:{secs%60:02d}",
-                                    seconds=secs))
+                                    seconds=secs, x=cx, y=cy))
                 log.info("read cooldown (%s/PSM %d) at (%d,%d): %ds (~%.1fh)",
                          prep_method, psm, cx, cy, secs, secs / 3600)
             # Nine passes exist to catch a badge one binarisation misses; once
@@ -220,10 +225,18 @@ def read_cooldowns_with_retry(
         cds = read_cooldowns(screen)
         # Merge with best-so-far (across attempts), preserving ±5s dedup
         # Same proportional dedup as read_cooldowns
-        def _is_dup(a: int, b: int) -> bool:
-            return abs(a - b) <= max(25, int(0.05 * min(a, b)))
+        # Merge by POSITION. Each pass is already position-deduped, so a value
+        # rule here undid that work: on 2026-10-27 every pass read all three
+        # badges, two of them 48s apart, and this merge collapsed them to two
+        # -- reporting 2/3, which dropped the daemon onto its low-confidence
+        # 1h re-check instead of the real 3.8h cooldown. That is why the
+        # claimer kept waking minutes after a successful claim.
+        def _same_badge(a: Cooldown, b: Cooldown) -> bool:
+            if a.x < 0 or b.x < 0:        # no position recorded -> fall back
+                return abs(a.seconds - b.seconds) <= max(25, int(0.05 * min(a.seconds, b.seconds)))
+            return abs(a.x - b.x) <= 400 and abs(a.y - b.y) <= 400
         for cd in cds:
-            if not any(_is_dup(b.seconds, cd.seconds) for b in best):
+            if not any(_same_badge(b, cd) for b in best):
                 best.append(cd)
         log.info(
             "OCR attempt %d/%d: %d timer(s) this pass, %d total unique",

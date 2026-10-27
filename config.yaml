@@ -202,3 +202,7 @@ log_retention_days: 7
 # Default pause length offered by the dashboard "I am playing" button, in
 # minutes. The button can send any value; this is only the default.
 play_pause_default_minutes: 120
+
+# A button value older than this is treated as spent, not as a new press.
+# Guards against stale controls replaying after a reboot.
+stale_control_seconds: 1800
