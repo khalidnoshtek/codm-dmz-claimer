@@ -206,3 +206,17 @@ play_pause_default_minutes: 120
 # A button value older than this is treated as spent, not as a new press.
 # Guards against stale controls replaying after a reboot.
 stale_control_seconds: 1800
+
+# Hard wall-clock budget for one claim cycle, in seconds. A healthy cycle takes
+# ~2.5 min. The pathological one is CODM stuck on a login/loading screen it
+# cannot leave — usually because the account is live on your phone — where every
+# step waits out its own timeout and the AVD holds your session for a quarter of
+# an hour. Past this the cycle stops itself, the AVD shuts down, and nothing is
+# retried until the next scheduled wake.
+cycle_deadline_seconds: 600
+
+# Shortest full cooldown LST Hunt hands out after a claim (4h). Used to rewind
+# the remembered expiries when a claim lands but the post-claim page hides the
+# badges from OCR — without it the next cycle reads the pre-claim cache, thinks
+# a card is due any second, and re-runs within the hour for nothing.
+post_claim_cooldown_seconds: 14400

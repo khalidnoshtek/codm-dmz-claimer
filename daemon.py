@@ -99,6 +99,12 @@ def _run_diagnosis_sync(cfg: dict, summary: dict | None) -> str | None:
     return short
 
 
+# Reasons a cycle ended by choice rather than by breaking. None of them is
+# retried within the pass, none triggers a diagnosis, and all of them mean the
+# rewards are still sitting there unclaimed.
+DELIBERATE_STOPS = ("needs_login", "session_conflict", "avd_closed", "cycle_timeout")
+
+
 def _auto_diagnose(cfg: dict, summary: dict | None) -> str | None:
     """After a cycle fully fails (all retries), optionally invoke Claude Code
     headlessly to look at the failure screenshot + logs and diagnose (and, if
@@ -338,6 +344,11 @@ def loop_forever() -> int:
     signal.signal(signal.SIGTERM, _handle_stop)
 
     consecutive_failures = 0
+    # Consecutive cycles that ended because the account was in use. Each one
+    # lengthens the back-off: one conflict is a coincidence, three in a row is
+    # a gaming session, and polling through it just keeps fighting you for the
+    # login.
+    playing_streak = 0
     prev_summary: dict | None = None
     cfg0 = load_config()
     # Baseline the trigger/delay markers to whatever's already on the remote so
@@ -459,6 +470,7 @@ def loop_forever() -> int:
                     summary = None
                 if isinstance(summary, dict) and summary.get("ok"):
                     consecutive_failures = 0
+                    playing_streak = 0
                     log.info("Cycle ok — claims_attempted=%s", summary.get("claims_attempted"))
                     break
                 reason = (summary or {}).get("fail_detail") or (summary or {}).get("reason") or "unknown"
@@ -473,6 +485,18 @@ def loop_forever() -> int:
                     # the rewards are still waiting.
                     log.warning("You're playing CODM elsewhere — skipping this cycle "
                                 "rather than kicking you off; will retry later")
+                    break
+                if isinstance(summary, dict) and summary.get("reason") == "avd_closed":
+                    # You shut the emulator by hand. Retrying boots it again
+                    # and takes the CODM session straight back off you, which
+                    # is the opposite of what closing it asked for.
+                    log.warning("You closed the AVD — leaving it closed and backing off")
+                    break
+                if isinstance(summary, dict) and summary.get("reason") == "cycle_timeout":
+                    # The run blew its wall-clock budget, which in practice
+                    # means CODM could not get past login/loading. Another
+                    # attempt takes the same road; come back later instead.
+                    log.warning("Cycle hit its deadline — not retrying this pass")
                     break
                 if attempt < max_attempts and not _stopping:
                     # Check for a pause before burning another attempt. The
@@ -501,8 +525,11 @@ def loop_forever() -> int:
             # Cycle fully failed (all retries) and it's not a needs-login case ->
             # optionally call Claude Code to look at the screenshot + logs and
             # diagnose/fix. Rate-limited inside _auto_diagnose.
+            # Deliberate stops are not malfunctions -- there is nothing for a
+            # diagnosis to find, and it would bill tokens to report "the user
+            # closed the emulator".
             if not (isinstance(summary, dict) and summary.get("ok")) \
-                    and not (isinstance(summary, dict) and summary.get("reason") == "needs_login"):
+                    and (summary or {}).get("reason") not in DELIBERATE_STOPS:
                 _auto_diagnose(cfg, summary)
 
         # Whatever happened above -- success, clean failure, or an exception
@@ -536,9 +563,21 @@ def loop_forever() -> int:
         # the next cycle can reuse them instead of falling back to a blind
         # fixed period.
         from_cache = False
+        claims_made = 0
+        if isinstance(summary, dict):
+            claims_made = int(summary.get("claims_attempted") or 0)
         if all_cooldowns:
             cooldowns.save(all_cooldowns, ROOT)
         else:
+            # A claim resets the cards it claimed, so the remembered expiries
+            # for those cards are now wrong (they read as "ready any moment").
+            # Rewind them before falling back on the cache -- otherwise the
+            # cycle right after a claim always re-runs within the hour and
+            # finds nothing.
+            if claims_made:
+                cooldowns.note_claim(
+                    claims_made, ROOT,
+                    int(cfg.get("post_claim_cooldown_seconds", 14400)))
             cached, cached_count = cooldowns.load(ROOT)
             if cached:
                 all_cooldowns = cached
@@ -579,14 +618,20 @@ def loop_forever() -> int:
         max_sleep = float(cfg.get("max_sleep_seconds", 7200))            # 2h default
         low_conf_sleep = float(cfg.get("low_confidence_sleep_seconds", 1200))  # 20m default
         blind_sleep = float(cfg.get("blind_sleep_seconds", 5400))        # 90m default
-        if isinstance(summary, dict) and summary.get("reason") == "session_conflict":
+        if isinstance(summary, dict) and summary.get("reason") in ("session_conflict", "avd_closed"):
             # Nothing was claimed and the cards are still waiting; we just
-            # could not get in. Come back after a short wait rather than
-            # sleeping a full cooldown -- but not so soon that we interrupt
-            # the session that is still in progress.
-            base = float(cfg.get("session_conflict_retry_seconds", 2700))
-            source = "you were playing — short retry"
-            log.info("Session conflict: retrying in %.0f min", base / 60)
+            # could not get in -- either CODM kicked the AVD because you were
+            # playing, or you closed the AVD yourself. Both mean "the account
+            # is yours right now". Come back after a short wait rather than
+            # sleeping a full cooldown, but not so soon that we interrupt the
+            # session still in progress.
+            playing_streak += 1
+            base = float(cfg.get("session_conflict_retry_seconds", 2700)) * min(playing_streak, 3)
+            what = ("you closed the AVD" if summary.get("reason") == "avd_closed"
+                    else "you were playing")
+            source = f"{what} — waiting you out"
+            log.info("%s (%dx in a row): next attempt in %.0f min",
+                     what, playing_streak, base / 60)
         elif not all_cooldowns:
             # Neither a reading nor anything remembered: we genuinely don't
             # know when the next card unlocks, so keep the old conservative
@@ -597,29 +642,25 @@ def loop_forever() -> int:
                          "capping sleep at %.0fs", blind_sleep)
                 base = blind_sleep
                 source = f"{source} -> blind cap"
-        elif from_cache:
-            # The schedule came from a remembered reading because THIS cycle
-            # read nothing, so there is no fresh evidence behind it. Carrying
-            # the saved timer count across made a stale cache look as certain
-            # as a live 3/3 read and unlocked the full 6h ceiling: on
-            # 2026-09-24 a post-claim cycle read 0/3, fell back to a cache
-            # saying 10h, and slept 5.9h while cards were actually coming up
-            # -- the run before it had been claiming roughly hourly.
-            #
-            # The remembered time is still the best guess for WHEN, so keep
-            # using it; just re-check within the hour instead of trusting it
-            # for six.
-            if base > low_conf_sleep:
-                log.info("Schedule came from a remembered reading (OCR read nothing "
-                         "this cycle): capping sleep at %.0fs instead of %.0fs",
-                         low_conf_sleep, max_sleep)
-                base = low_conf_sleep
-                source = f"{source} -> unverified cap"
         elif ocr_count < 3 and ocr_seconds:
+            # Fewer than 3 timers accounted for -- live or remembered, same
+            # risk: the soonest cooldown we know about may not be the soonest
+            # that exists, so re-check sooner rather than trusting min().
+            #
+            # Age is deliberately NOT part of this test. Expiries are stored
+            # as absolute times, so a reading from two hours ago is exactly as
+            # correct as one from two seconds ago. The one thing that genuinely
+            # invalidated the cache was a claim resetting the cards, and
+            # cooldowns.note_claim now rewinds those entries at the moment the
+            # claim lands. Before that fix this branch's predecessor capped
+            # every post-claim cycle at an hour, which is why 2026-10-27 ran at
+            # 11:09 (claimed 3), 11:16, 11:21 and again at 13:00 with nothing
+            # to claim in any of them.
             tighter = low_conf_sleep
             if base > tighter:
-                log.info("Low-confidence OCR (%d/3 timers): capping sleep at %.0fs instead of %.0fs",
-                         ocr_count, tighter, max_sleep)
+                log.info("Only %d/3 timers accounted for (%s): capping sleep at %.0fs instead of %.0fs",
+                         ocr_count, "remembered" if from_cache else "live read",
+                         tighter, max_sleep)
                 base = tighter
                 source = f"{source} -> low-confidence cap"
         elif base > max_sleep:

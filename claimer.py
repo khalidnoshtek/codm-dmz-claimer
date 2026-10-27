@@ -19,7 +19,7 @@ from pathlib import Path
 import yaml
 
 from lib.adb import AdbDevice, ensure_avd_running, LOCKED_AVD
-from lib.flow import DEFAULT_STEPS, run_flow
+from lib.flow import DEFAULT_STEPS, AbortCycle, run_flow
 from lib.ocr import read_cooldowns_with_retry
 
 ROOT = Path(__file__).resolve().parent
@@ -134,6 +134,33 @@ def _on_login_screen(device, confirm_seconds: float = 120.0) -> bool:
 SESSION_CONFLICT_DETAIL = ("you were playing CODM elsewhere — the AVD session was "
                            "kicked (account accessed from another location)")
 
+AVD_CLOSED_DETAIL = ("you closed the AVD mid-cycle — stopped so the CODM session "
+                     "stays yours")
+
+CYCLE_TIMEOUT_DETAIL = ("the cycle ran past its deadline without reaching the claim "
+                        "screen — stopped instead of hanging on the AVD")
+
+
+def _device_online(serial: str) -> bool:
+    """True if `serial` is still an attached, responsive adb device.
+
+    You force-closing the AVD looks identical to every other failure from
+    inside the flow, yet it is the one failure that must never be retried:
+    a retry cold-boots the emulator and takes the CODM session straight back
+    off you, mid-match. This is the cheapest honest signal that the device we
+    were driving is simply no longer there.
+    """
+    try:
+        out = subprocess.run(["adb", "devices"], capture_output=True,
+                             text=True, timeout=10).stdout
+    except Exception:
+        return False
+    for line in out.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) >= 2 and parts[0] == serial:
+            return parts[1] == "device"
+    return False
+
 
 def _session_conflict(img) -> bool:
     """True for CODM's "Account accessed from another location. (0E100004)"
@@ -218,6 +245,14 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
 
     device = AdbDevice.auto()
     log.info("ADB device: %s (dry_run=%s)", device.serial, dry_run)
+
+    # Hard wall-clock deadline for the whole run. A healthy cycle takes ~2.5
+    # min; the pathological one is CODM sitting on a login/loading screen it
+    # can never leave (most often because the account is live on your phone),
+    # where each step politely waits out its own timeout and the AVD holds the
+    # session for a quarter of an hour. The pre-step hook checks this, so the
+    # cycle gives up between steps rather than whenever it happens to notice.
+    cycle_deadline = time.time() + float(cfg.get("cycle_deadline_seconds", 600))
 
     # Keep the display awake so headless rendering stays fresh and screencaps
     # don't come back frozen (idempotent — persists in the AVD's userdata).
@@ -351,6 +386,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                     "tap_black_market": 15.0, "tap_home_icon": 6.0}
 
     def _dismiss_hook(step) -> None:
+        if not dry_run and time.time() > cycle_deadline:
+            raise AbortCycle("cycle_timeout", CYCLE_TIMEOUT_DETAIL)
         if dry_run or step.name not in _dismiss_before:
             return
         try:
@@ -377,6 +414,14 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             while time.time() < deadline:
                 screen = device.screencap()
                 txt = _pt.image_to_string(_cv2.cvtColor(screen, _cv2.COLOR_BGR2GRAY)).upper()
+                # You are playing: CODM's one-session dialog has a single
+                # button, QUIT GAME. Nothing in this hook can clear it, and
+                # every second spent on it is a second your match is at risk,
+                # so end the cycle here instead of spending the step budget.
+                if _session_conflict(screen):
+                    raise AbortCycle("session_conflict", SESSION_CONFLICT_DETAIL)
+                if time.time() > cycle_deadline:
+                    raise AbortCycle("cycle_timeout", CYCLE_TIMEOUT_DETAIL)
                 # 0) "Quit the game?" dialog — cancel it with BACK. This MUST be
                 #    checked before the target-visible guard below: the lobby (and
                 #    the DMZ tile) render straight through this dialog, so the
@@ -454,6 +499,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
                 # Otherwise it's the login/loading splash still connecting — do
                 # NOT press BACK (that would walk out of CODM); just wait.
                 time.sleep(1.8)
+        except AbortCycle:
+            raise          # deliberate stop — never swallowed by the catch-all
         except Exception:
             pass
 
@@ -469,11 +516,23 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         pre_step_hook=_dismiss_hook,
     )
 
+    # You closing the AVD reads as an ordinary abort from in here, so check
+    # before recovery runs: relaunching would cold-boot the emulator you just
+    # shut and take the CODM session back off you.
+    avd_vanished = bool(not result.ok() and not dry_run
+                        and not _device_online(device.serial))
+    if avd_vanished:
+        log.warning("AVD %s is no longer attached — it was closed from outside; "
+                    "abandoning this cycle instead of recovering", device.serial)
+
     # Recovery: if the flow aborted, check whether we even have CODM in
     # foreground. The most common abort cause is CODM crashing to Android
     # home (network error dialog dismissed by user, ANR, asset-check error,
     # etc.). In that case relaunch CODM cold and retry the flow once.
-    if not result.ok() and not dry_run:
+    #
+    # Deliberate aborts (you are playing / you closed the AVD / deadline) are
+    # excluded: there is nothing here to recover, only a session to steal.
+    if not result.ok() and not dry_run and not avd_vanished and not result.reason:
         log.warning("Flow aborted at %s — attempting recovery", result.aborted_at)
         codm_alive = device.is_app_foreground(pkg)
         if not codm_alive:
@@ -513,6 +572,15 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         else:
             log.warning("Recovery: retry also aborted at %s — giving up this cycle", result.aborted_at)
 
+    # Recovery can itself run into a closed AVD (you shut it while the retry
+    # was in flight), and from there every later step reads as "screen
+    # unreadable" rather than "you closed it".
+    if not result.ok() and not dry_run and not avd_vanished \
+            and not _device_online(device.serial):
+        avd_vanished = True
+        log.warning("AVD %s disappeared during recovery — it was closed from outside",
+                    device.serial)
+
     # Final screenshot + cooldown OCR — captured while still on the LST Hunt
     # page. Uses retry-with-fresh-screencaps because the post-claim animation
     # can briefly hide a badge, making a single OCR pass under-count. The
@@ -522,6 +590,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     final_path = LOGS / f"{stamp}_final.png"
     cooldowns_seconds: list[int] = []
     try:
+        if avd_vanished:
+            raise RuntimeError("AVD closed — no screen left to read")
         # Save one screenshot for audit, then run OCR with retries
         screen = device.screencap()
         import cv2
@@ -557,6 +627,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     shutdown_between = bool(cfg.get("shutdown_between_cycles", True))
     if dry_run:
         log.info("Cleanup: skipped (dry-run)")
+    elif avd_vanished:
+        log.info("Cleanup: nothing to do — the AVD is already gone")
     elif shutdown_between:
         log.info("Cleanup: HOME key (CODM saves state) then AVD shutdown")
         device.home()
@@ -581,10 +653,19 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     fail_detail = None
     fail_reason = None
     if not result.ok() and not dry_run:
-        fail_detail = _classify_failure(device, pkg)
-        if fail_detail == SESSION_CONFLICT_DETAIL:
-            # Retrying would sign in again and kick the player off their phone.
-            fail_reason = "session_conflict"
+        if result.reason:
+            # A hook already decided why, and _classify_failure can't improve
+            # on it (by now the AVD is shut, so there is no screen to read).
+            fail_detail = result.fail_detail
+            fail_reason = result.reason
+        elif avd_vanished:
+            fail_detail = AVD_CLOSED_DETAIL
+            fail_reason = "avd_closed"
+        else:
+            fail_detail = _classify_failure(device, pkg)
+            if fail_detail == SESSION_CONFLICT_DETAIL:
+                # Retrying would sign in again and kick the player off their phone.
+                fail_reason = "session_conflict"
 
     summary = {
         "ok": result.ok(),

@@ -188,6 +188,22 @@ DEFAULT_STEPS: list[Step] = [
 ]
 
 
+class AbortCycle(Exception):
+    """Raised by a pre-step hook to stop the whole flow at once.
+
+    Some conditions are not "this step failed, try the next thing" — they mean
+    the cycle itself must end now: you are playing on your phone, you closed
+    the AVD, or the run has blown past its deadline. Without this the flow kept
+    walking its step list, burning the per-step budget on a screen that could
+    never advance.
+    """
+
+    def __init__(self, reason: str, detail: str):
+        super().__init__(detail)
+        self.reason = reason
+        self.detail = detail
+
+
 @dataclass
 class FlowResult:
     claims_attempted: int = 0
@@ -195,6 +211,10 @@ class FlowResult:
     steps_skipped: list[str] = field(default_factory=list)
     aborted_at: str | None = None
     abort_reason: str | None = None
+    # Set only when a hook aborted the run deliberately; the daemon keys its
+    # no-retry / back-off decisions off these rather than re-deriving them.
+    reason: str | None = None
+    fail_detail: str | None = None
 
     def ok(self) -> bool:
         return self.aborted_at is None
@@ -406,14 +426,25 @@ def run_flow(
 ) -> FlowResult:
     result = FlowResult()
     for step in steps:
-        if pre_step_hook:
-            pre_step_hook(step)
-        ok, taps = run_step(
-            device, step, templates_dir,
-            threshold=threshold, step_timeout=step_timeout,
-            settle_default=screen_settle, tap_settle=tap_settle,
-            dry_run=dry_run,
-        )
+        try:
+            if pre_step_hook:
+                pre_step_hook(step)
+            ok, taps = run_step(
+                device, step, templates_dir,
+                threshold=threshold, step_timeout=step_timeout,
+                settle_default=screen_settle, tap_settle=tap_settle,
+                dry_run=dry_run,
+            )
+        except AbortCycle as e:
+            # Return rather than propagate: the caller's cleanup (final
+            # screenshot, AVD shutdown) still needs to run, and it keys off a
+            # FlowResult.
+            log.warning("Flow aborted deliberately at %s: %s", step.name, e.detail)
+            result.aborted_at = step.name
+            result.abort_reason = e.detail
+            result.reason = e.reason
+            result.fail_detail = e.detail
+            return result
         if step.name == "tap_all_claims":
             result.claims_attempted = taps
         if ok:

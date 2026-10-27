@@ -70,3 +70,45 @@ def load(repo_root: Path) -> tuple[list[int], int]:
         return sorted(remaining), int(d.get("count_at_save", 0) or 0)
     except Exception:
         return [], 0
+
+
+def note_claim(claims: int, repo_root: Path, full_cooldown_seconds: int) -> None:
+    """Correct the remembered expiries after a claim that OCR couldn't re-read.
+
+    Claiming resets a card's timer, which makes the saved expiries wrong in the
+    worst possible direction: they still say "unlocks in a moment" for cards
+    that have just gone back on a multi-hour cooldown. The cycle after a claim
+    is also the one where OCR reliably reads nothing (the post-claim page hides
+    the badges), so it fell back on exactly that stale cache, saw a near-zero
+    soonest expiry, and re-ran within the hour to find nothing claimable --
+    every time. 2026-10-27 is typical: claimed 3 at 11:09, then empty runs at
+    11:16 and 11:21.
+
+    The correction is arithmetic, not a guess. The cards just claimed are the
+    ones whose timers had already run out, so drop that many of the soonest
+    entries and put each back at the shortest full cooldown LST Hunt hands out
+    -- the earliest moment any of them can be ready again.
+    """
+    if claims <= 0:
+        return
+    try:
+        p = _path(repo_root)
+        d = json.loads(p.read_text())
+        now = int(time.time())
+        expiries = sorted(int(e) for e in d.get("expiries", []))
+        # Prefer dropping the entries that had genuinely expired; if the saved
+        # reading under-counted them, take the soonest still-future ones too.
+        expired = [e for e in expiries if e <= now]
+        keep = [e for e in expiries if e > now]
+        keep = keep[max(0, claims - len(expired)):]
+        keep.extend(now + int(full_cooldown_seconds) for _ in range(claims))
+        p.write_text(json.dumps({
+            "saved_at": now,
+            "count_at_save": len(keep),
+            "expiries": sorted(keep),
+        }, indent=2))
+        log.info("Claimed %d — rewound %d cooldown(s) to +%.1fh; soonest now in %.1fh",
+                 claims, claims, full_cooldown_seconds / 3600,
+                 (min(keep) - now) / 3600 if keep else 0.0)
+    except Exception as e:
+        log.debug("could not rewind cooldowns after a claim: %s", e)

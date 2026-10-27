@@ -83,6 +83,10 @@ def _result_line(summary: dict | None) -> tuple[bool, int, str]:
         return False, 0, "NEEDS LOGIN"
     if summary.get("reason") == "session_conflict":
         return False, 0, "SKIPPED — you were playing"
+    if summary.get("reason") == "avd_closed":
+        return False, 0, "SKIPPED — you closed the AVD"
+    if summary.get("reason") == "cycle_timeout":
+        return False, 0, "SKIPPED — CODM never loaded (deadline)"
     ok = bool(summary.get("ok"))
     claims = summary.get("claims_attempted") or 0
     if not ok:
