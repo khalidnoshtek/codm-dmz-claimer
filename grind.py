@@ -380,6 +380,12 @@ def run(args) -> int:
         time.sleep(float(cfg.get("cold_launch_settle_seconds", 25)))
 
     played = 0
+    # On the first lap we have no idea what CODM is showing: the session may
+    # have been started (or restarted) while a match was already running, in
+    # which case the lobby is twenty minutes away, not five. Later laps have
+    # just watched a match end, so the lobby is due immediately and a short
+    # wait is the right way to notice something has gone wrong.
+    first_lap = True
     try:
         while not _stopping:
             if args.matches and played >= args.matches:
@@ -389,12 +395,14 @@ def run(args) -> int:
                 log.info("Done — session time is up after %d match(es).", played)
                 break
 
-            if not wait_for_lobby(device, cfg, deadline=time.time() + 300):
+            lobby_wait = float(args.match_timeout if first_lap else 300)
+            if not wait_for_lobby(device, cfg, deadline=time.time() + lobby_wait):
                 if _stopping:
                     break
-                log.error("Couldn't get back to the lobby — stopping rather than "
-                          "tapping blind.")
+                log.error("Couldn't reach the lobby within %ds — stopping rather "
+                          "than tapping blind.", int(lobby_wait))
                 break
+            first_lap = False
 
             # Standing in the lobby between two matches is the one moment when
             # claiming is free: the AVD is up, the session is ours, and nothing
