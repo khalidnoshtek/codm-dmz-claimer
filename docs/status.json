@@ -13,8 +13,8 @@
     ]
   },
   "next_run": {
-    "epoch": 1793094508,
-    "source": "remembered (burst cluster of 2 cooldowns, min=6283s max=6331s, found 3/3)"
+    "epoch": 1793098108,
+    "source": "manual reschedule"
   },
-  "updated_at_epoch": 1793087583
+  "updated_at_epoch": 1793091807
 }
