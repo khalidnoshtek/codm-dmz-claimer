@@ -1,5 +1,5 @@
 {
-  "state": "sleeping",
+  "state": "stopped",
   "last_run": {
     "epoch": 1793082085,
     "ok": true,
@@ -11,13 +11,5 @@
       7.8
     ]
   },
-  "next_run": {
-    "epoch": 1793090799,
-    "source": "manual reschedule"
-  },
-  "diagnosis": {
-    "epoch": 1793079566,
-    "text": "Failed to authenticate. API Error: 401 OAuth access token has expired. Re-authenticate to continue."
-  },
-  "updated_at_epoch": 1793082085
+  "updated_at_epoch": 1793082387
 }
