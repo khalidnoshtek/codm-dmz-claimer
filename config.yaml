@@ -232,3 +232,12 @@ grind_default_minutes: 120
 # took host CPU the game needed and made matches stutter.
 grind_poll_seconds: 10
 grind_ocr_seconds: 30
+
+# Which template set to match against. Must agree with the AVD's screen
+# resolution — template matching is not scale-invariant.
+#   templates       -> native 1440x3120 (hw.lcd in the AVD config)
+#   templates_1080  -> FHD+ 1080x2340, set with `adb shell wm size 1080x2340`
+#                      and `wm density 420`. Fewer pixels for CODM to render,
+#                      which is what a real Pixel 7 Pro does by default.
+# Change BOTH together, or nothing will match.
+templates_dir: templates

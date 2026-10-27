@@ -23,7 +23,26 @@ from lib.flow import DEFAULT_STEPS, AbortCycle, run_flow
 from lib.ocr import read_cooldowns_with_retry
 
 ROOT = Path(__file__).resolve().parent
-TEMPLATES = ROOT / "templates"
+def _templates_dir() -> Path:
+    """Which template set to match against.
+
+    Template matching is not scale-invariant, so the AVD's screen resolution
+    and the templates have to agree. Running the emulator at FHD+ instead of
+    its native 1440x3120 cuts the pixel load CODM has to render by more than
+    half, but every template then matches at the wrong size -- hence one set
+    per resolution, selected by config rather than by editing code, so going
+    back is a one-line change if a set turns out to match worse.
+    """
+    try:
+        import yaml
+        d = (yaml.safe_load((ROOT / "config.yaml").read_text()) or {}).get("templates_dir")
+    except Exception:
+        d = None
+    p = ROOT / (d or "templates")
+    return p if p.is_dir() else ROOT / "templates"
+
+
+TEMPLATES = _templates_dir()
 LOGS = ROOT / "logs"
 
 

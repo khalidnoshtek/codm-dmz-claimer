@@ -37,13 +37,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from claimer import claim_once, load_config          # noqa: E402
+from claimer import TEMPLATES, claim_once, load_config   # noqa: E402
 from lib import cooldowns                            # noqa: E402
 from lib.adb import LOCKED_AVD, AdbDevice, ensure_avd_running   # noqa: E402
 from lib.status import read_remote_control, record_run            # noqa: E402
 from lib.vision import find_close_button, find_template          # noqa: E402
 
-TEMPLATES = ROOT / "templates"
 # The lobby's START button doubles as the "we are in the menus" marker, which
 # is both the most direct signal available and one template instead of two: if
 # START is on screen we can start a match, and if it is not, we are either in
