@@ -99,6 +99,69 @@ def _run_diagnosis_sync(cfg: dict, summary: dict | None) -> str | None:
     return short
 
 
+_grind_proc: subprocess.Popen | None = None
+
+
+def _grind_alive() -> bool:
+    return _grind_proc is not None and _grind_proc.poll() is None
+
+
+def _start_grind(cfg: dict, minutes: int) -> bool:
+    """Launch grind.py as a child of the daemon.
+
+    The daemon owns it rather than the user starting it by hand, for two
+    reasons: only one thing may drive the locked AVD at a time, and Start has
+    to work from a phone with the Mac sitting unattended. While the child is
+    alive the daemon runs no cycles of its own -- grind.py claims in the gaps
+    between matches instead, which is cheaper anyway (no cold boot, no session
+    handover).
+    """
+    global _grind_proc
+    if _grind_alive():
+        log.info("Grind already running (pid %d) — ignoring the start", _grind_proc.pid)
+        return True
+    script = ROOT / "grind.py"
+    if not script.exists():
+        log.error("No grind.py to start")
+        return False
+    minutes = max(1, int(minutes or cfg.get("grind_default_minutes", 120)))
+    cmd = [sys.executable, str(script), "--minutes", str(minutes), "--managed"]
+    try:
+        _grind_proc = subprocess.Popen(cmd, cwd=str(ROOT),
+                                       stdout=subprocess.DEVNULL,
+                                       stderr=subprocess.STDOUT)
+        log.info("Grind started (pid %d) for %d min", _grind_proc.pid, minutes)
+        return True
+    except Exception as e:
+        log.error("Could not start grind.py: %s", e)
+        _grind_proc = None
+        return False
+
+
+def _stop_grind(timeout: float = 120.0) -> None:
+    """Ask grind.py to stop and wait for it to hand the AVD back.
+
+    SIGTERM, not kill: grind.py traps it, finishes what it is doing, shuts the
+    emulator down and releases its hold. Killing it would strand a running
+    emulator holding the CODM session.
+    """
+    global _grind_proc
+    if not _grind_alive():
+        _grind_proc = None
+        return
+    log.info("Stopping grind (pid %d) — it will finish up and free the AVD", _grind_proc.pid)
+    try:
+        _grind_proc.terminate()
+        _grind_proc.wait(timeout=timeout)
+    except Exception:
+        log.warning("Grind didn't exit in %.0fs — killing it and shutting the AVD down", timeout)
+        try:
+            _grind_proc.kill()
+        except Exception:
+            pass
+    _grind_proc = None
+
+
 # Reasons a cycle ended by choice rather than by breaking. None of them is
 # retried within the pass, none triggers a diagnosis, and all of them mean the
 # rewards are still sitting there unclaimed.
@@ -421,6 +484,8 @@ def loop_forever() -> int:
     last_fix_at = _ctl0.get("fix_requested_at", 0)
     last_avd_open = _ctl0.get("avd_open_at", 0)
     last_avd_close = _ctl0.get("avd_close_at", 0)
+    last_grind_start = _ctl0.get("grind_start_at", 0)
+    last_grind_stop = _ctl0.get("grind_stop_at", 0)
 
     # Startup: if the remembered expiries say the soonest card is still a long
     # way off, skip the cycle this iteration and go straight to sleeping. Only
@@ -765,9 +830,35 @@ def loop_forever() -> int:
                         last_fix_at = ctl.get("fix_requested_at", 0)
                         last_avd_open = ctl.get("avd_open_at", 0)
                         last_avd_close = ctl.get("avd_close_at", 0)
+                        last_grind_start = ctl.get("grind_start_at", 0)
+                        last_grind_stop = ctl.get("grind_stop_at", 0)
                         last_play_until = ctl.get("play_until", 0)
                         _baselined = True
                         log.info("Control file readable again — baselined, buttons live from here")
+                    last_poll = time.time()
+                    continue
+                if ctl.get("grind_start_at", 0) > last_grind_start:
+                    last_grind_start = ctl["grind_start_at"]
+                    mins = ctl.get("grind_minutes", 0)
+                    log.info("Dashboard asked to start grinding (%s min)", mins or "default")
+                    if _start_grind(cfg, mins):
+                        _publish(cfg, "grinding", summary=summary, wake_at=deadline,
+                                 source="grinding matches")
+                    last_poll = time.time()
+                    continue
+                if ctl.get("grind_stop_at", 0) > last_grind_stop:
+                    last_grind_stop = ctl["grind_stop_at"]
+                    log.info("Dashboard asked to stop grinding")
+                    _stop_grind()
+                    _publish(cfg, "sleeping", summary=summary, wake_at=deadline, source=source)
+                    last_poll = time.time()
+                    continue
+                if _grind_alive():
+                    # Never start a cycle on top of a running match. grind.py
+                    # is claiming between matches, so nothing is being missed;
+                    # just keep pushing our own wake out until it finishes.
+                    if deadline - now < trigger_poll * 2:
+                        deadline = now + trigger_poll * 3
                     last_poll = time.time()
                     continue
                 if ctl.get("play_until", 0) != last_play_until:
@@ -828,6 +919,9 @@ def loop_forever() -> int:
             chunk = min(5.0, deadline - now)
             time.sleep(chunk)
 
+    # Take the grind child with us. Orphaning it would leave something
+    # driving the emulator that the next daemon has no handle on.
+    _stop_grind()
     # Cancel any pending wake so we don't leave a stale alarm queued.
     cancel_wakes()
     log.info("Daemon exiting cleanly.")

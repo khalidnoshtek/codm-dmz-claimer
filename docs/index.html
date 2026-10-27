@@ -196,6 +196,18 @@
     </div>
 
     <div class="seg">
+      <div class="lbl"><i data-lucide="swords" class="i"></i> Match grinding</div>
+      <div class="chips5">
+        <button class="btn chip" data-grind="60">1h</button>
+        <button class="btn chip" data-grind="120">2h</button>
+        <button class="btn chip" data-grind="240">4h</button>
+        <button class="btn chip" data-grind="480">8h</button>
+        <button class="btn chip" id="grindCustom">custom</button>
+      </div>
+      <button class="btn chip resume" id="grindStopBtn"><i data-lucide="square" class="i"></i> Stop grinding</button>
+    </div>
+
+    <div class="seg">
       <div class="lbl"><i data-lucide="log-in" class="i"></i> CODM signed out?</div>
       <div class="pair">
         <button class="btn chip" id="avdOpenBtn"><i data-lucide="monitor-play" class="i"></i> Open AVD to sign in</button>
@@ -299,6 +311,7 @@ function tick(){
   if(data.state==='running'){state='run';icon='loader';label='Claimer running';count='ACTIVE';when='the AVD is in use right now';sub='Please don’t play until it finishes';subIcon='gamepad-2';}
   else if(data.state==='paused'){const left=nr?Math.max(0,nr.epoch-now):0;state='safe';icon='pause';label='Paused while you play';count=left?fmtDur(left):'PAUSED';when=nr?('claiming resumes at '+fmtClock(nr.epoch)):'claiming is paused';sub='The AVD is free — CODM is all yours';subIcon='gamepad-2';}
   else if(data.state==='stopped'){state='safe';icon='power';label='Claimer stopped';count='OFF';when='not running — nothing is scheduled';sub='Safe to play — CODM will not be touched';subIcon='check';}
+  else if(data.state==='grinding'){state='run';icon='swords';label='Grinding matches';count='ACTIVE';when='the AVD is playing matches back to back';sub='Claims happen between matches — don’t sign in elsewhere';subIcon='gamepad-2';}
   else if(isLogin){state='login';icon='log-in';label='Sign-in needed';count='LOGIN';when='CODM logged out of your account';sub='Open CODM on the Mac and sign in';subIcon='alert-triangle';}
   else if(!nr){state='safe';icon=stale?'wifi-off':'moon';label=stale?'Offline':'Idle';count=stale?'OFFLINE':'—';when=stale?'daemon hasn’t reported in >3h':'waiting for first cycle';sub='';}
   else{
@@ -361,7 +374,7 @@ async function write(patch,okMsg){
     const g=await fetch(API+'?ref=main&t='+Date.now(),{headers:H,cache:'no-store'});
     if(g.status===401||g.status===403){msg('Token invalid/expired or missing Contents:write.','err');return false;}
     const gj=await g.json();let cur={};try{cur=JSON.parse(atob(gj.content||''));}catch(e){}
-    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,avd_open_at:0,avd_close_at:0,play_until:0,...cur,...patch};
+    const body={requested_at:0,delay_until:0,run_at:0,fix_requested_at:0,avd_open_at:0,avd_close_at:0,play_until:0,grind_start_at:0,grind_stop_at:0,grind_minutes:0,...cur,...patch};
     const p=await fetch(API,{method:'PUT',headers:H,body:JSON.stringify({message:(patch.requested_at?'trigger: run now':'trigger: reschedule'),content:btoa(JSON.stringify(body,null,2)+'\n'),sha:gj.sha,branch:'main'})});
     if(p.ok){msg(okMsg,'ok');return true;}
     const pj=await p.json().catch(()=>({}));msg('Failed: '+(pj.message||('HTTP '+p.status)),'err');return false;
@@ -390,6 +403,19 @@ async function pausePlay(mins){
 async function resumeNow(){
   pendingAt=0;
   await write({play_until:0}, 'Resumed — claiming is back on its normal schedule.');
+}
+async function startGrind(mins){
+  /* The daemon owns the grind process, so Start is just a timestamp here --
+     same pattern as every other button. It claims DMZ rewards between
+     matches, which is why this does NOT also pause claiming. */
+  await write({grind_start_at:Date.now()/1000|0, grind_minutes:Math.round(mins)},
+    'Grinding for '+(mins>=60?(mins/60)+'h':mins+'m')+' — the AVD comes up within ~'+HINT+'s and claims between matches.');
+}
+async function stopGrind(){
+  const b=$('grindStopBtn'); b.disabled=true;
+  await write({grind_stop_at:Date.now()/1000|0},
+    'Stopping after the current match — the AVD is freed when it ends.');
+  setTimeout(()=>{b.disabled=false;},20000);
 }
 async function openAvd(){
   const b=$('avdOpenBtn'); b.disabled=true;
@@ -424,6 +450,9 @@ $('readyBtn').addEventListener('click',runWhenReady);
 document.querySelectorAll('.chip[data-play]').forEach(b=>b.addEventListener('click',()=>pausePlay(parseInt(b.dataset.play,10))));
 $('playCustom').addEventListener('click',()=>{const v=prompt('Pause claiming for how long?\nMinutes, or e.g. 90 for an hour and a half.','120');if(v===null)return;const m=parseFloat(v);if(!(m>0)){msg('Enter a number of minutes.','err');return;}pausePlay(m);});
 $('resumeBtn').addEventListener('click',resumeNow);
+document.querySelectorAll('.chip[data-grind]').forEach(b=>b.addEventListener('click',()=>startGrind(parseInt(b.dataset.grind,10))));
+$('grindCustom').addEventListener('click',()=>{const v=prompt('Grind matches for how long?\nMinutes.','120');if(v===null)return;const m=parseFloat(v);if(!(m>0)){msg('Enter a number of minutes.','err');return;}startGrind(m);});
+$('grindStopBtn').addEventListener('click',stopGrind);
 $('avdOpenBtn').addEventListener('click',openAvd);
 $('avdCloseBtn').addEventListener('click',closeAvd);
 document.querySelectorAll('.chip[data-adj]').forEach(b=>b.addEventListener('click',()=>adjust(parseInt(b.dataset.adj,10))));

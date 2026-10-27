@@ -40,7 +40,7 @@ sys.path.insert(0, str(ROOT))
 from claimer import claim_once, load_config          # noqa: E402
 from lib import cooldowns                            # noqa: E402
 from lib.adb import LOCKED_AVD, AdbDevice, ensure_avd_running   # noqa: E402
-from lib.status import record_run                                # noqa: E402
+from lib.status import read_remote_control, record_run            # noqa: E402
 from lib.vision import find_close_button, find_template          # noqa: E402
 
 TEMPLATES = ROOT / "templates"
@@ -53,6 +53,23 @@ MENU_TEMPLATE = TEMPLATES / "08_home_icon.png"
 log = logging.getLogger("grind")
 
 _stopping = False
+_started_at = int(time.time())
+_last_stop_poll = 0.0
+
+
+def _remote_stop_check(interval: float = 45.0) -> bool:
+    """Has Stop been pressed? Rate-limited: each call costs a git fetch."""
+    global _stopping, _last_stop_poll
+    if _stopping:
+        return True
+    now = time.time()
+    if now - _last_stop_poll < interval:
+        return False
+    _last_stop_poll = now
+    if stop_requested(_started_at):
+        log.info("Stop pressed on the dashboard — finishing up.")
+        _stopping = True
+    return _stopping
 
 
 def _handle_stop(signum, frame) -> None:
@@ -107,6 +124,20 @@ def set_claimer_hold(until_epoch: int) -> bool:
 # --------------------------------------------------------------------------
 # Screen reading
 # --------------------------------------------------------------------------
+def stop_requested(started_at: int) -> bool:
+    """True if the dashboard has asked this session to stop.
+
+    Polled by the session itself, not just by whoever launched it, so Stop
+    works on a run started by hand from the terminal as well as one the daemon
+    started. Compared against the session's own start time so an old press
+    left in the control file cannot kill a session the moment it begins.
+    """
+    try:
+        return int(read_remote_control(ROOT).get("grind_stop_at", 0) or 0) > started_at
+    except Exception:
+        return False
+
+
 def _in_menus(device: AdbDevice, threshold: float) -> bool:
     """True if CODM is showing a menu screen (lobby, mode select, results)."""
     try:
@@ -216,6 +247,8 @@ def wait_for_lobby(device: AdbDevice, cfg: dict, deadline: float) -> bool:
             return False
         if find_template(screen, MENU_TEMPLATE, threshold=thr):
             return True
+        if _remote_stop_check():
+            return False
         if _results_words(screen):
             x_hit = find_close_button(screen, TEMPLATES)
             if x_hit:
@@ -285,7 +318,13 @@ def run(args) -> int:
     # Hold the claimer for the whole session plus a margin, so it does not
     # wake into the middle of the last match.
     hold_until = int((session_end if args.minutes else time.time() + 6 * 3600) + 600)
-    if set_claimer_hold(hold_until):
+    if args.managed:
+        # Started by the daemon, which already refuses to run a cycle while
+        # this process is alive. Pushing a hold as well would fight its own
+        # parent for the control file and leave the dashboard showing "paused"
+        # after the session ends.
+        log.info("Managed by the daemon — it holds its own cycles off.")
+    elif set_claimer_hold(hold_until):
         log.info("Claimer held off until %s",
                  time.strftime("%H:%M:%S", time.localtime(hold_until)))
     else:
@@ -322,6 +361,8 @@ def run(args) -> int:
                 break
 
             if not wait_for_lobby(device, cfg, deadline=time.time() + 300):
+                if _stopping:
+                    break
                 log.error("Couldn't get back to the lobby — stopping rather than "
                           "tapping blind.")
                 break
@@ -351,6 +392,9 @@ def run(args) -> int:
             # here but wait. The cap only exists so a match that never resolves
             # (disconnect, stuck spectate) cannot hang the session forever.
             if not wait_for_lobby(device, cfg, deadline=time.time() + args.match_timeout):
+                if _stopping:
+                    log.info("Stopping — leaving the match to end on its own.")
+                    break
                 log.warning("Match didn't end within the cap — restarting CODM to "
                             "get back to a known screen.")
                 device.force_stop(pkg)
@@ -370,7 +414,7 @@ def run(args) -> int:
             log.info("AVD shut down.")
         # Hand the claimer back straight away rather than making it sit out the
         # rest of a hold that was sized for a session we are no longer in.
-        if set_claimer_hold(int(time.time()) + 120):
+        if not args.managed and set_claimer_hold(int(time.time()) + 120):
             log.info("Claimer released — it resumes in ~2 minutes.")
     return 0
 
@@ -392,6 +436,8 @@ def main() -> int:
                    help="don't shut the AVD down on exit")
     p.add_argument("--no-claim", action="store_true",
                    help="just grind; don't claim DMZ rewards between matches")
+    p.add_argument("--managed", action="store_true",
+                   help="started by the daemon; it handles holding its own cycles off")
     args = p.parse_args()
     if not args.minutes and not args.matches:
         print("Refusing to run unbounded — pass --minutes and/or --matches.", file=sys.stderr)

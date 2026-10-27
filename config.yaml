@@ -220,3 +220,8 @@ cycle_deadline_seconds: 600
 # badges from OCR — without it the next cycle reads the pre-claim cache, thinks
 # a card is due any second, and re-runs within the hour for nothing.
 post_claim_cooldown_seconds: 14400
+
+# How long a "Start grinding" press runs for when the dashboard doesn't say.
+# The dashboard always sends a value, so this only covers a malformed control
+# file — it exists so a bad read can't start an unbounded session.
+grind_default_minutes: 120

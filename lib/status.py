@@ -136,7 +136,8 @@ def read_remote_control(repo_root: Path) -> dict:
     cache) and unauthenticated-rate-limit free. Also advances the origin/main
     tracking ref, so the next status push rebases cleanly onto any button commit."""
     _zero = {"requested_at": 0, "delay_until": 0, "run_at": 0, "fix_requested_at": 0,
-             "avd_open_at": 0, "avd_close_at": 0, "play_until": 0, "_ok": False}
+             "avd_open_at": 0, "avd_close_at": 0, "play_until": 0,
+             "grind_start_at": 0, "grind_stop_at": 0, "grind_minutes": 0, "_ok": False}
     try:
         f = _run(["git", "fetch", "origin", "main", "-q"], repo_root, timeout=30)
         if f.returncode != 0:
@@ -159,6 +160,12 @@ def read_remote_control(repo_root: Path) -> dict:
             # itself. Distinct from run_at, which only moves the next run --
             # this also frees the AVD immediately if one is up.
             "play_until": int(d.get("play_until", 0) or 0),
+            # Start/stop for the match-grinding loop (grind.py). The daemon
+            # owns the subprocess so there is one thing driving the AVD at a
+            # time, and so Start works from the phone with the Mac unattended.
+            "grind_start_at": int(d.get("grind_start_at", 0) or 0),
+            "grind_stop_at": int(d.get("grind_stop_at", 0) or 0),
+            "grind_minutes": int(d.get("grind_minutes", 0) or 0),
             # False means the fetch failed, not that every control is unset.
             # Callers must not treat a failed read as a baseline: doing so made
             # stale values look new after a reboot (see daemon startup).
