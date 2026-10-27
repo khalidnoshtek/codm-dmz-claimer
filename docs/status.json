@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1793079559,
+    "epoch": 1793079566,
     "ok": true,
     "result": "CLAIMED 3 reward(s)",
     "detail": null,
@@ -12,5 +12,9 @@
     "epoch": 1793084579,
     "source": "config period -> blind cap"
   },
-  "updated_at_epoch": 1793079559
+  "diagnosis": {
+    "epoch": 1793079566,
+    "text": "Failed to authenticate. API Error: 401 OAuth access token has expired. Re-authenticate to continue."
+  },
+  "updated_at_epoch": 1793079566
 }
