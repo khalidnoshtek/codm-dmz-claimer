@@ -1,9 +1,9 @@
 {
-  "requested_at": 1792835608,
+  "requested_at": 0,
   "delay_until": 0,
-  "run_at": 1793090799,
-  "fix_requested_at": 1789191863,
+  "run_at": 0,
+  "fix_requested_at": 0,
   "avd_open_at": 0,
-  "avd_close_at": 1790102209,
+  "avd_close_at": 0,
   "play_until": 0
 }
