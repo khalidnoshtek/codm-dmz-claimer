@@ -1,17 +1,5 @@
 [
   {
-    "epoch": 1792735604,
-    "ok": true,
-    "result": "CLAIMED 2",
-    "detail": null,
-    "claims": 2,
-    "cooldowns_hours": [
-      4.0,
-      4.8,
-      8.0
-    ]
-  },
-  {
     "epoch": 1792750896,
     "ok": true,
     "result": "CLAIMED 1",
@@ -850,6 +838,14 @@
   },
   {
     "epoch": 1793338070,
+    "ok": false,
+    "result": "Failed",
+    "detail": "the AVD (emulator) wouldn't start",
+    "claims": 0,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1793344668,
     "ok": false,
     "result": "Failed",
     "detail": "the AVD (emulator) wouldn't start",
