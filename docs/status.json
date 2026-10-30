@@ -1,5 +1,5 @@
 {
-  "state": "stopped",
+  "state": "running",
   "last_run": {
     "epoch": 1793300443,
     "ok": false,
@@ -8,5 +8,5 @@
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1793300802
+  "updated_at_epoch": 1793337319
 }
