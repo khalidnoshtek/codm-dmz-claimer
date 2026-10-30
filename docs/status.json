@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1793365126,
+    "epoch": 1793365378,
     "ok": false,
     "result": "Failed",
     "detail": "the AVD (emulator) wouldn't start",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1793365126
+  "next_run": {
+    "epoch": 1793372386,
+    "source": "config period -> blind cap"
+  },
+  "updated_at_epoch": 1793365378
 }
