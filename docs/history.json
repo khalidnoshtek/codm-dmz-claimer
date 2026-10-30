@@ -851,5 +851,13 @@
     "detail": "the AVD (emulator) wouldn't start",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1793351378,
+    "ok": false,
+    "result": "Failed",
+    "detail": "the AVD (emulator) wouldn't start",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
