@@ -1,12 +1,12 @@
 {
   "state": "running",
   "last_run": {
-    "epoch": 1793357876,
+    "epoch": 1793358120,
     "ok": false,
     "result": "Failed",
     "detail": "the AVD (emulator) wouldn't start",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1793357876
+  "updated_at_epoch": 1793358120
 }
