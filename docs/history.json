@@ -1,81 +1,5 @@
 [
   {
-    "epoch": 1792696048,
-    "ok": true,
-    "result": "CLAIMED 2",
-    "detail": null,
-    "claims": 2,
-    "cooldowns_hours": [
-      8.0
-    ]
-  },
-  {
-    "epoch": 1792700311,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      0.3,
-      6.8
-    ]
-  },
-  {
-    "epoch": 1792702390,
-    "ok": true,
-    "result": "CLAIMED 1",
-    "detail": null,
-    "claims": 1,
-    "cooldowns_hours": [
-      6.2,
-      14.0
-    ]
-  },
-  {
-    "epoch": 1792706198,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      5.2,
-      12.9
-    ]
-  },
-  {
-    "epoch": 1792709943,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      4.1,
-      11.9
-    ]
-  },
-  {
-    "epoch": 1792713461,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      3.2,
-      10.9
-    ]
-  },
-  {
-    "epoch": 1792717414,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": [
-      2.1,
-      9.8
-    ]
-  },
-  {
     "epoch": 1792735604,
     "ok": true,
     "result": "CLAIMED 2",
@@ -918,6 +842,14 @@
   },
   {
     "epoch": 1793300443,
+    "ok": false,
+    "result": "Failed",
+    "detail": "the AVD (emulator) wouldn't start",
+    "claims": 0,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1793338070,
     "ok": false,
     "result": "Failed",
     "detail": "the AVD (emulator) wouldn't start",
