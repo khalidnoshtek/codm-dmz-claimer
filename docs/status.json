@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1793481103,
+    "epoch": 1793481280,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1793481103
+  "next_run": {
+    "epoch": 1793488009,
+    "source": "config period -> blind cap"
+  },
+  "updated_at_epoch": 1793481280
 }
