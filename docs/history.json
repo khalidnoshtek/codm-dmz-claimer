@@ -534,5 +534,13 @@
     "detail": null,
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1793702062,
+    "ok": false,
+    "result": "NEEDS LOGIN",
+    "detail": null,
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
