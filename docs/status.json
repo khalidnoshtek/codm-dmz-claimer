@@ -1,7 +1,7 @@
 {
   "state": "paused",
   "last_run": {
-    "epoch": 1793728974,
+    "epoch": 1793737900,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1793739745,
+    "epoch": 1793739696,
     "source": "paused while you play"
   },
-  "updated_at_epoch": 1793728974
+  "updated_at_epoch": 1793737900
 }
