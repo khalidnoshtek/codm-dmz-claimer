@@ -1,16 +1,12 @@
 {
-  "state": "paused",
+  "state": "running",
   "last_run": {
-    "epoch": 1793800424,
+    "epoch": 1793803979,
     "ok": true,
     "result": "CLAIMED 1 reward(s)",
     "detail": null,
     "claims": 1,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1793803987,
-    "source": "paused while you play"
-  },
-  "updated_at_epoch": 1793800424
+  "updated_at_epoch": 1793803979
 }
