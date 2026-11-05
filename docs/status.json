@@ -1,5 +1,5 @@
 {
-  "state": "paused",
+  "state": "stopped",
   "last_run": {
     "epoch": 1793888246,
     "ok": false,
@@ -8,9 +8,5 @@
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1793890007,
-    "source": "paused while you play"
-  },
-  "updated_at_epoch": 1793888246
+  "updated_at_epoch": 1793888432
 }
