@@ -241,3 +241,10 @@ grind_ocr_seconds: 30
 #                      which is what a real Pixel 7 Pro does by default.
 # Change BOTH together, or nothing will match.
 templates_dir: templates
+
+# How long the pre-flight "get to a screen we recognise" walk may take before
+# giving up and running the normal flow anyway. It closes popups, taps back
+# arrows and presses BACK until it sees the main lobby or the LST Hunt page.
+# Needed because BR sessions leave CODM on whatever screen was last open, and
+# the flow used to assume it always started on the main lobby.
+goto_lobby_budget_seconds: 90

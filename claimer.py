@@ -198,6 +198,86 @@ def _session_conflict(img) -> bool:
     return "ACCESSED FROM ANOTHER" in body or "0E100004" in body or "OE100004" in body
 
 
+def _quit_dialog_visible(img) -> bool:
+    """True if CODM's "quit the game?" dialog is up.
+
+    Cropped to the title band and upscaled: full-frame OCR misses it about half
+    the time, because the title is tiny against a 3120x1440 frame and the lobby
+    renders straight through behind it.
+    """
+    try:
+        import cv2
+        import pytesseract
+        h, w = img.shape[:2]
+        band = img[int(h * 0.16):int(h * 0.27), int(w * 0.15):int(w * 0.85)]
+        band = cv2.resize(band, None, fx=2, fy=2, interpolation=cv2.INTER_CUBIC)
+        txt = pytesseract.image_to_string(cv2.cvtColor(band, cv2.COLOR_BGR2GRAY)).upper()
+        return "QUIT THE GAME" in txt or "WANT TO QUIT" in txt
+    except Exception:
+        return False
+
+
+def _goto_lobby(device, cfg, log, budget: float = 90.0) -> str:
+    """Walk CODM back to a screen the flow recognises, from wherever it is.
+
+    The navigation flow assumes it starts on the main lobby. That is true after
+    a cold boot, and false the moment anyone has used the AVD: on 2026-11-05
+    CODM was left parked on the LST Hunt page and two cycles failed at
+    enter_dmz_mode/dmz_lobby_check before a cold boot happened to reset it.
+    Since BR sessions leave CODM on whatever screen was last open, the flow
+    cannot keep assuming its own starting point.
+
+    Returns "lst_hunt" when the claim page is already up (the caller skips
+    straight to claiming), "lobby" when the main lobby is up, or "unknown" if
+    neither appeared in time -- in which case the caller runs the normal flow
+    and lets the existing recovery deal with it.
+    """
+    from lib.vision import find_close_button, find_template
+    thr = float(cfg.get("match_threshold", 0.82))
+    deadline = time.time() + budget
+    backs = 0
+    while time.time() < deadline:
+        try:
+            screen = device.screencap()
+        except Exception:
+            return "unknown"
+        if find_template(screen, TEMPLATES / "04_lst_hunt_tab.png", threshold=thr):
+            log.info("goto-lobby: already on the LST Hunt page — skipping the walk in")
+            return "lst_hunt"
+        if find_template(screen, TEMPLATES / "00_dmz_recon_mode.png", threshold=thr):
+            log.info("goto-lobby: main lobby reached")
+            return "lobby"
+        # The quit dialog only appears when BACK was pressed with nothing left
+        # to close, which means we are already on the lobby. Cancel it and stop
+        # -- pressing BACK again just toggles it for the rest of the budget.
+        if _quit_dialog_visible(screen):
+            log.info("goto-lobby: quit dialog — cancelling; we are on the lobby")
+            device.back()
+            time.sleep(1.2)
+            return "lobby"
+        hit = find_close_button(screen, TEMPLATES)
+        if hit:
+            log.info("goto-lobby: closing a popup at (%d,%d)", hit.x, hit.y)
+            device.tap(hit.x, hit.y)
+            time.sleep(1.2)
+            continue
+        arrow = find_template(screen, TEMPLATES / "07_back_arrow.png", threshold=thr)
+        if arrow:
+            log.info("goto-lobby: back arrow at (%d,%d)", arrow.x, arrow.y)
+            device.tap(arrow.x, arrow.y)
+            time.sleep(1.6)
+            continue
+        if backs < 6:
+            backs += 1
+            log.info("goto-lobby: no landmark — BACK (%d/6)", backs)
+            device.back()
+            time.sleep(1.6)
+            continue
+        break
+    log.warning("goto-lobby: no known screen within %.0fs — running the flow anyway", budget)
+    return "unknown"
+
+
 def _classify_failure(device, pkg: str) -> str:
     """Human-readable reason the flow couldn't reach the claim screen, by
     inspecting whatever CODM is actually showing when it gave up. Turns the
@@ -536,6 +616,20 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
             raise          # deliberate stop — never swallowed by the catch-all
         except Exception:
             pass
+
+    # Normalise the starting screen before navigating. Without this the flow
+    # only works from the main lobby, which is a guarantee we do not actually
+    # have once the AVD is used for anything else.
+    if not dry_run:
+        where = _goto_lobby(device, cfg, log,
+                            budget=float(cfg.get("goto_lobby_budget_seconds", 90)))
+        if where == "lst_hunt":
+            # Keep the tab tap: the LST Hunt tab is visible from its sibling
+            # tabs too, so matching it does not prove the page is selected.
+            # Tapping an already-selected tab costs nothing.
+            nav_steps = [s for s in nav_steps
+                         if s.name in ("tap_lst_hunt_tab", "tap_all_claims")]
+            log.info("Starting from the LST Hunt page — running %d step(s)", len(nav_steps))
 
     result = run_flow(
         device,
