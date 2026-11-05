@@ -367,6 +367,19 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
     if not dry_run and _on_login_screen(device):
         log.error("CODM is on the Activision login screen — a manual sign-in is required.")
         log_status("NEEDS LOGIN — open the AVD and sign in to CODM (Activision account)")
+        # Keep the evidence. This path reported final_screenshot=None, so four
+        # sign-outs across 2026-11-03..05 left nothing to look at and no way to
+        # tell a real sign-out from a slow auto-login that outlived
+        # _on_login_screen's confirmation window. Captured BEFORE the shutdown
+        # below, which is the last moment the screen still exists.
+        login_shot = LOGS / f"{datetime.utcnow().strftime('%Y-%m-%dT%H-%M-%SZ')}_needs_login.png"
+        try:
+            import cv2 as _cv2
+            _cv2.imwrite(str(login_shot), device.screencap())
+            log.info("Saved the login screen to %s", login_shot.name)
+        except Exception as e:
+            log.warning("Could not save the login screenshot: %s", e)
+            login_shot = None
         if bool(cfg.get("shutdown_between_cycles", True)):
             device.home()
             time.sleep(2.0)
@@ -379,7 +392,8 @@ def claim_once(cfg: dict, dry_run_override: bool | None = None) -> dict:
         summary = {"ok": False, "reason": "needs_login", "stamp": stamp,
                    "claims_attempted": 0, "steps_run": [], "steps_skipped": [],
                    "aborted_at": "login", "abort_reason": "CODM logged out — manual sign-in required",
-                   "final_screenshot": None, "cooldowns_seconds": [], "min_cooldown_seconds": None}
+                   "final_screenshot": str(login_shot) if login_shot and login_shot.exists() else None,
+                   "cooldowns_seconds": [], "min_cooldown_seconds": None}
         (LOGS / f"{stamp}_summary.json").write_text(json.dumps(summary, indent=2))
         log.info("Summary: %s", summary)
         return summary
