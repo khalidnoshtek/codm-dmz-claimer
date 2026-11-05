@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "paused",
   "last_run": {
-    "epoch": 1793887640,
+    "epoch": 1793888246,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1793893905,
-    "source": "remembered (min cooldown 5189s, found 3/3)"
+    "epoch": 1793890007,
+    "source": "paused while you play"
   },
-  "updated_at_epoch": 1793887640
+  "updated_at_epoch": 1793888246
 }
