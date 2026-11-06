@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1793986015,
+    "epoch": 1793991787,
     "ok": false,
     "result": "Failed",
     "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1793991925,
-    "source": "config period -> blind cap"
-  },
-  "updated_at_epoch": 1793986015
+  "updated_at_epoch": 1793991787
 }
