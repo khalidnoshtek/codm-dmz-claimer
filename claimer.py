@@ -217,6 +217,24 @@ def _quit_dialog_visible(img) -> bool:
         return False
 
 
+def _menu_words_visible(img) -> bool:
+    """True if the screen shows CODM's menu chrome (lobby, mode list, store).
+
+    Used as the precondition for pressing BACK. The distinction that matters is
+    menu vs. loading splash: BACK in a menu goes up one level, BACK on the
+    splash leaves the game entirely.
+    """
+    try:
+        import cv2
+        import pytesseract
+        txt = pytesseract.image_to_string(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)).upper()
+    except Exception:
+        return False
+    words = ("RANKED", "MULTIPLAYER", "BATTLE ROYALE", "LOADOUT", "TOURNAMENT",
+             "ZOMBIES", "DMZ", "BLACK MARKET", "STORE", "EVENTS", "START")
+    return sum(1 for w in words if w in txt) >= 2
+
+
 def _goto_lobby(device, cfg, log, budget: float = 90.0) -> str:
     """Walk CODM back to a screen the flow recognises, from wherever it is.
 
@@ -267,13 +285,23 @@ def _goto_lobby(device, cfg, log, budget: float = 90.0) -> str:
             device.tap(arrow.x, arrow.y)
             time.sleep(1.6)
             continue
-        if backs < 6:
-            backs += 1
-            log.info("goto-lobby: no landmark — BACK (%d/6)", backs)
-            device.back()
-            time.sleep(1.6)
-            continue
-        break
+        # BACK is only safe with positive evidence we are inside CODM's menus.
+        # Nothing matches during the cold-launch splash, and BACK there walks
+        # straight out of the app: on 2026-11-06 six blind presses exited CODM
+        # and the cycle then reported "CODM not foregrounded (probably
+        # crashed)", failing three cycles in a row. The popup hook already had
+        # this rule -- "do NOT press BACK, that would walk out of CODM; just
+        # wait" -- and it has to hold here too.
+        if _menu_words_visible(screen):
+            if backs < 4:
+                backs += 1
+                log.info("goto-lobby: in a menu, no landmark — BACK (%d/4)", backs)
+                device.back()
+                time.sleep(1.6)
+                continue
+            break
+        log.info("goto-lobby: CODM still loading — waiting rather than pressing BACK")
+        time.sleep(2.5)
     log.warning("goto-lobby: no known screen within %.0fs — running the flow anyway", budget)
     return "unknown"
 
