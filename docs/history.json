@@ -690,5 +690,13 @@
       1.0,
       8.0
     ]
+  },
+  {
+    "epoch": 1793961085,
+    "ok": false,
+    "result": "SKIPPED \u2014 CODM never loaded (deadline)",
+    "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
