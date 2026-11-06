@@ -1,16 +1,20 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1793956346,
+    "epoch": 1793956533,
     "ok": true,
-    "result": "nothing claimable",
+    "result": "CLAIMED 1 reward(s)",
     "detail": null,
-    "claims": 0,
+    "claims": 1,
     "cooldowns_hours": [
-      0.4,
-      1.4,
-      1.4
+      1.0,
+      1.0,
+      8.0
     ]
   },
-  "updated_at_epoch": 1793956346
+  "next_run": {
+    "epoch": 1793960434,
+    "source": "OCR (burst cluster of 2 cooldowns, min=3523s max=3526s, found 3/3)"
+  },
+  "updated_at_epoch": 1793956533
 }
