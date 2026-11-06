@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "paused",
   "last_run": {
-    "epoch": 1793992247,
+    "epoch": 1793992249,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1793995559,
-    "source": "remembered (burst cluster of 2 cooldowns, min=14225s max=14249s, found 2/3) -> low-confidence cap"
+    "epoch": 1794003037,
+    "source": "paused while you play"
   },
-  "updated_at_epoch": 1793992247
+  "updated_at_epoch": 1793992249
 }
