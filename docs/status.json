@@ -1,15 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1793992119,
+    "epoch": 1793992247,
     "ok": true,
-    "result": "CLAIMED 3 reward(s)",
+    "result": "nothing claimable",
     "detail": null,
-    "claims": 3,
-    "cooldowns_hours": [
-      4.0,
-      4.0
-    ]
+    "claims": 0,
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1793992119
+  "next_run": {
+    "epoch": 1793995559,
+    "source": "remembered (burst cluster of 2 cooldowns, min=14225s max=14249s, found 2/3) -> low-confidence cap"
+  },
+  "updated_at_epoch": 1793992247
 }
