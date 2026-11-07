@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1794026710,
-    "ok": false,
-    "result": "Failed",
-    "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
-    "claims": 0,
+    "epoch": 1794027068,
+    "ok": true,
+    "result": "CLAIMED 3 reward(s)",
+    "detail": null,
+    "claims": 3,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1794026710
+  "next_run": {
+    "epoch": 1794042113,
+    "source": "remembered (min cooldown 14400s, found 3/3)"
+  },
+  "updated_at_epoch": 1794027068
 }
