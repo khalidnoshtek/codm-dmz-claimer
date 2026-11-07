@@ -718,5 +718,13 @@
     "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
     "claims": 0,
     "cooldowns_hours": []
+  },
+  {
+    "epoch": 1794057831,
+    "ok": false,
+    "result": "SKIPPED \u2014 CODM never loaded (deadline)",
+    "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
+    "claims": 0,
+    "cooldowns_hours": []
   }
 ]
