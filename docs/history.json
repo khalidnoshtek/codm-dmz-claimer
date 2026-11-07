@@ -1,29 +1,5 @@
 [
   {
-    "epoch": 1793454376,
-    "ok": false,
-    "result": "NEEDS LOGIN",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1793461588,
-    "ok": false,
-    "result": "NEEDS LOGIN",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
-    "epoch": 1793468133,
-    "ok": false,
-    "result": "NEEDS LOGIN",
-    "detail": null,
-    "claims": 0,
-    "cooldowns_hours": []
-  },
-  {
     "epoch": 1793474390,
     "ok": false,
     "result": "NEEDS LOGIN",
@@ -725,6 +701,14 @@
     "result": "SKIPPED \u2014 CODM never loaded (deadline)",
     "detail": "the cycle ran past its deadline without reaching the claim screen \u2014 stopped instead of hanging on the AVD",
     "claims": 0,
+    "cooldowns_hours": []
+  },
+  {
+    "epoch": 1794077897,
+    "ok": true,
+    "result": "CLAIMED 3",
+    "detail": null,
+    "claims": 3,
     "cooldowns_hours": []
   }
 ]
