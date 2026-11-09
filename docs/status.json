@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1794226874,
+    "epoch": 1794228928,
     "ok": true,
     "result": "CLAIMED 3 reward(s)",
     "detail": null,
     "claims": 3,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1794235648,
-    "source": "manual reschedule"
-  },
-  "updated_at_epoch": 1794226874
+  "updated_at_epoch": 1794228928
 }
