@@ -1,7 +1,7 @@
 {
-  "state": "sleeping",
+  "state": "paused",
   "last_run": {
-    "epoch": 1794324257,
+    "epoch": 1794324306,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1794342682,
-    "source": "manual reschedule"
+    "epoch": 1794331484,
+    "source": "paused while you play"
   },
-  "updated_at_epoch": 1794324257
+  "updated_at_epoch": 1794324306
 }
