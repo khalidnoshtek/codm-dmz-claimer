@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1794324249,
+    "epoch": 1794324257,
     "ok": true,
     "result": "nothing claimable",
     "detail": null,
@@ -9,8 +9,8 @@
     "cooldowns_hours": []
   },
   "next_run": {
-    "epoch": 1794335511,
-    "source": "remembered (burst cluster of 2 cooldowns, min=10978s max=10999s, found 3/3)"
+    "epoch": 1794342682,
+    "source": "manual reschedule"
   },
-  "updated_at_epoch": 1794324249
+  "updated_at_epoch": 1794324257
 }
