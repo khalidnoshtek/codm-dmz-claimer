@@ -1,16 +1,12 @@
 {
-  "state": "sleeping",
+  "state": "running",
   "last_run": {
-    "epoch": 1794323597,
+    "epoch": 1794324115,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
     "claims": 0,
     "cooldowns_hours": []
   },
-  "next_run": {
-    "epoch": 1794335482,
-    "source": "remembered (burst cluster of 2 cooldowns, min=14077s max=14098s, found 3/3)"
-  },
-  "updated_at_epoch": 1794323597
+  "updated_at_epoch": 1794324115
 }
