@@ -1,12 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1794327348,
-    "ok": true,
-    "result": "nothing claimable",
-    "detail": null,
+    "epoch": 1794327598,
+    "ok": false,
+    "result": "Failed",
+    "detail": "the AVD (emulator) wouldn't start",
     "claims": 0,
     "cooldowns_hours": []
   },
-  "updated_at_epoch": 1794327348
+  "next_run": {
+    "epoch": 1794335126,
+    "source": "remembered (burst cluster of 2 cooldowns, min=7629s max=7650s, found 3/3)"
+  },
+  "updated_at_epoch": 1794327598
 }
