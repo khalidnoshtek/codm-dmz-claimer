@@ -1,16 +1,16 @@
 {
-  "state": "running",
+  "state": "sleeping",
   "last_run": {
-    "epoch": 1794320970,
-    "ok": true,
-    "result": "CLAIMED 3 reward(s)",
+    "epoch": 1794321150,
+    "ok": false,
+    "result": "NEEDS LOGIN",
     "detail": null,
-    "claims": 3,
-    "cooldowns_hours": [
-      4.0,
-      8.0,
-      8.0
-    ]
+    "claims": 0,
+    "cooldowns_hours": []
   },
-  "updated_at_epoch": 1794320970
+  "next_run": {
+    "epoch": 1794335479,
+    "source": "remembered (burst cluster of 2 cooldowns, min=14077s max=14098s, found 3/3)"
+  },
+  "updated_at_epoch": 1794321150
 }
