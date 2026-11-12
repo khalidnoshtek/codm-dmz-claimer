@@ -1,7 +1,7 @@
 {
   "state": "sleeping",
   "last_run": {
-    "epoch": 1794501860,
+    "epoch": 1794502091,
     "ok": false,
     "result": "NEEDS LOGIN",
     "detail": null,
@@ -12,5 +12,5 @@
     "epoch": 1794504538,
     "source": "config period -> blind cap"
   },
-  "updated_at_epoch": 1794501860
+  "updated_at_epoch": 1794502091
 }
